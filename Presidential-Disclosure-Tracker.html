@@ -339,7 +339,7 @@ var formData = Object.assign({},blank);
 
 function saveStocks(){try{localStorage.setItem("pdt_v2",JSON.stringify(stocks));}catch(e){}}
 function saveMisc(){try{localStorage.setItem("pdt_misc",JSON.stringify({dismissed:dismissed,watchlist:watchlist,alloc:alloc,portSize:portSize,launchDone:launchDone,stripeLink:stripeLink}));}catch(e){}}
-(function(){try{var m=JSON.parse(localStorage.getItem("pdt_misc")||"null");if(m){dismissed=m.dismissed||[];watchlist=m.watchlist||{};alloc=m.alloc||{};portSize=m.portSize||"100000";launchDone=m.launchDone||{};stripeLink=m.stripeLink||"";}}catch(e){}})();
+(function(){try{var m=JSON.parse(localStorage.getItem("pdt_misc")||"null");if(m){dismissed=m.dismissed||[];watchlist=m.watchlist||{};alloc=m.alloc||{};portSize=m.portSize||"100000";launchDone=m.launchDone||{};stripeLink=m.stripeLink||"https://buy.stripe.com/eVq9AT1fM1JVdg3b6heAg01";}}catch(e){}})();
 
 // =====================================================================
 // HELPERS
@@ -975,7 +975,7 @@ function renderGoLive(){
   var steps=[
     {n:1,t:"Vercel — Free Hosting",col:"#00c7b7",url:"https://vercel.com",items:["vercel.com — sign up free","Connect GitHub repo","Auto-deploys in 60 seconds — live URL immediately"]},
     {n:2,t:"Buy Your Domain",col:"#e8b832",url:"https://namecheap.com",items:["namecheap.com — ~$12/yr","PresidentialDisclosureTracker.com","PDTracker.com or FollowTheMoney.app"]},
-    {n:3,t:"Set Up Stripe",col:"#6772e5",url:"https://stripe.com",items:["stripe.com — sign up with your EIN","Basic $9.99 / Pro $24.99 / Elite $49.99","Enable 7-day free trial to reduce churn"]},
+    {n:3,t:"Stripe — LIVE ✅",col:"#6772e5",url:"https://buy.stripe.com/eVq9AT1fM1JVdg3b6heAg01",items:["Stripe account LIVE — Follow The Money LLC","Basic Plan: $9.99/month — payment link active","Click Go → to subscribe now"]},
   ];
   var REV=[{subs:50,mo:1249},{subs:100,mo:2998},{subs:250,mo:6496},{subs:500,mo:12492},{subs:1000,mo:23985}];
   return '<h2 style="color:#e8b832;font-size:16px;margin:0 0 4px;font-family:Georgia,serif">🌐 Go Live</h2>'+
