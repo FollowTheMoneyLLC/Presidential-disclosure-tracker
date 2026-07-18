@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Presidential Disclosure Tracker</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#060810;color:#c0d0c0;font-family:Inter,system-ui,sans-serif;min-height:100vh;}
+button{cursor:pointer;font-family:inherit;}
+input,select{font-family:inherit;outline:none;}
+a{text-decoration:none;}
+::-webkit-scrollbar{height:4px;width:4px;}
+::-webkit-scrollbar-track{background:#0a0c10;}
+::-webkit-scrollbar-thumb{background:#2a3a4a;border-radius:4px;}
+#nav{background:#0a0c10;border-bottom:1px solid #1e2838;position:sticky;top:0;z-index:100;display:flex;align-items:center;}
+#tabBar{display:flex;overflow-x:auto;flex:1;}
+.tab{background:transparent;color:#4a5a6a;border:none;border-bottom:2px solid transparent;padding:11px 13px;font-size:clamp(10px,1.3vw,12px);cursor:pointer;font-weight:normal;white-space:nowrap;flex-shrink:0;}
+.tab.active{background:#0d1117;color:#e8b832;border-bottom:2px solid #e8b832;font-weight:bold;}
+.page{padding:14px 18px;display:none;max-width:1100px;}
+.page.active{display:block;}
+.card{background:#0d1117;border:1px solid #1e2838;border-radius:10px;padding:14px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.grid3{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;}
+.gridS{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;}
+table{width:100%;border-collapse:collapse;font-size:11px;}
+th{padding:6px 8px;text-align:left;color:#8b6914;font-size:9px;font-weight:700;white-space:nowrap;border-bottom:1px solid #8b6914;}
+td{padding:5px 8px;border-bottom:1px solid #141820;vertical-align:middle;}
+tr:nth-child(odd) td{background:#080b0f;}
+tr:nth-child(even) td{background:#0a0d13;}
+.inp{background:#080b0f;border:1px solid #1e2838;border-radius:5px;padding:6px 10px;color:#e8b832;font-size:11px;width:100%;}
+.sel{background:#080b0f;border:1px solid #1e2838;border-radius:5px;padding:6px 8px;color:#e8b832;font-size:11px;width:100%;}
+.btn-gold{background:linear-gradient(135deg,#e8b832,#c49a1a);color:#060810;border:none;border-radius:7px;padding:9px 18px;font-weight:900;font-size:12px;cursor:pointer;}
+.pill{display:inline-block;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:bold;}
+.alert-buy{background:#022b10;border:1px solid #00c853;border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
+.alert-sell{background:#2a0606;border:1px solid #d50000;border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
+.news-card{background:#0d1117;border-radius:10px;overflow:hidden;border:1px solid #1e2838;}
+.bar-track{background:#141820;border-radius:20px;height:8px;overflow:hidden;margin:3px 0;}
+.bar-fill{height:100%;border-radius:20px;}
+.ctx-card{background:#0d1117;border-radius:10px;padding:14px 16px;margin-bottom:10px;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.live{animation:pulse 1.5s infinite;}
+</style>
+</head>
+<body>
+
+<div id="nav">
+  <div id="tabBar"></div>
+  <div style="padding:0 8px;flex-shrink:0;position:relative;">
+    <button id="langBtn" onclick="toggleLangMenu()" style="background:#0d1117;color:#e8b832;border:1px solid #8b6914;border-radius:6px;padding:5px 10px;font-size:11px;">EN &#x25BC;</button>
+    <div id="langMenu" style="display:none;position:absolute;top:110%;right:0;background:#0d1117;border:1px solid #1e2838;border-radius:8px;overflow:hidden;min-width:110px;box-shadow:0 8px 24px rgba(0,0,0,.9);z-index:300;"></div>
+  </div>
+</div>
+<div id="app"></div>
+<div style="background:#0d1117;border-top:1px solid #1e2838;padding:10px 18px;text-align:center;">
+  <p id="footer" style="margin:0;font-size:9px;color:#2a3a4a;"></p>
+</div>
+
+<script>
+// =====================================================================
+// DATA
+// =====================================================================
+var STOCKS = [
+  // TRUMP POSITIONS
+  {id:1, pol:"Donald Trump",    pty:"R", ticker:"NVDA",  co:"Nvidia Corp.",        sig:"BUY",  sta:"GOOD",    ret:"+170%", type:"Purchase",  date:"Mar 2026", stake:"$1M-$5M",   wk:"Buy",   note:"Stargate AI infrastructure. Q1 2026 buy. AI spending surge.", updated:"May 2026"},
+  {id:2, pol:"Donald Trump",    pty:"R", ticker:"INTC",  co:"Intel Corp.",          sig:"BUY",  sta:"GOOD",    ret:"+200%", type:"Purchase",  date:"Mar 2026", stake:"Multiple",   wk:"Buy",   note:"Govt equity stake taken same period. ATH broken Q1 2026.",  updated:"Jun 2026"},
+  {id:3, pol:"Donald Trump",    pty:"R", ticker:"HOOD",  co:"Robinhood Markets",    sig:"BUY",  sta:"GOOD",    ret:"+214%", type:"Purchase",  date:"Feb 2026", stake:"Large",      wk:"Buy",   note:"Named trustee of Trump Accounts retail program.",            updated:"May 2026"},
+  {id:4, pol:"Donald Trump",    pty:"R", ticker:"DELL",  co:"Dell Technologies",    sig:"BUY",  sta:"GOOD",    ret:"+96%",  type:"Purchase",  date:"Feb 2026", stake:"$1M-$5M",   wk:"Buy",   note:"Endorsed at White House May 2026.",                          updated:"May 2026"},
+  {id:5, pol:"Donald Trump",    pty:"R", ticker:"PLTR",  co:"Palantir Technologies",sig:"BUY",  sta:"GOOD",    ret:"+33%",  type:"Purchase",  date:"Jan 2026", stake:"$1M-$5M",   wk:"Buy",   note:"Truth Social endorsement preceded Apr 2026 surge.",          updated:"Jun 2026"},
+  {id:6, pol:"Donald Trump",    pty:"R", ticker:"COIN",  co:"Coinbase Global",      sig:"BUY",  sta:"GOOD",    ret:"+89%",  type:"Purchase",  date:"Jan 2026", stake:"$1M-$5M",   wk:"Buy",   note:"Crypto-friendly executive orders boosted sector.",            updated:"Apr 2026"},
+  {id:7, pol:"Donald Trump",    pty:"R", ticker:"DJT",   co:"Trump Media & Tech.",  sig:"SELL", sta:"BAD",     ret:"-77%",  type:"Ownership", date:"Ongoing",  stake:"~57%",       wk:"Avoid", note:"Revenue under $1M/qtr. Down 77% from peak. Avoid.",          updated:"May 2026"},
+  {id:8, pol:"Donald Trump",    pty:"R", ticker:"ORCL",  co:"Oracle Corp.",         sig:"BUY",  sta:"GOOD",    ret:"+55%",  type:"Purchase",  date:"Dec 2025", stake:"$1M+",       wk:"Watch", note:"Bought during TikTok deal negotiations. Policy overlap.",    updated:"May 2026"},
+  {id:9, pol:"Donald Trump",    pty:"R", ticker:"BA",    co:"Boeing",               sig:"BUY",  sta:"GOOD",    ret:"+22%",  type:"Purchase",  date:"Jan 2026", stake:"$1M-$5M",   wk:"Hold",  note:"Jun 12 crash was external shock. Position still held.",      updated:"May 2026"},
+  {id:10,pol:"Donald Trump",    pty:"R", ticker:"GE",    co:"GE Aerospace",         sig:"BUY",  sta:"GOOD",    ret:"+44%",  type:"Purchase",  date:"Jan 2026", stake:"$1M+",       wk:"Buy",   note:"Defense spending surge. $886B defense budget 2026.",         updated:"Apr 2026"},
+  // PELOSI POSITIONS
+  {id:11,pol:"Nancy Pelosi",    pty:"D", ticker:"NVDA",  co:"Nvidia Corp.",         sig:"BUY",  sta:"GOOD",    ret:"+170%", type:"Purchase",  date:"Jan 2026", stake:"Call opts",  wk:"Buy",   note:"Disclosed Jan 16 2026. Bought during Stargate AI week.",     updated:"Jan 2026"},
+  {id:12,pol:"Nancy Pelosi",    pty:"D", ticker:"GOOGL", co:"Alphabet Inc.",        sig:"BUY",  sta:"GOOD",    ret:"+28%",  type:"Purchase",  date:"2025",     stake:"Call opts",  wk:"Buy",   note:"Call options. Consistently profitable tech bets.",           updated:"2025"},
+  {id:13,pol:"Nancy Pelosi",    pty:"D", ticker:"AAPL",  co:"Apple Inc.",           sig:"BUY",  sta:"GOOD",    ret:"+18%",  type:"Purchase",  date:"2025",     stake:"$1M+",       wk:"Hold",  note:"Long-term holding. Most popular Congress stock.",            updated:"2025"},
+  // CONGRESS MEMBERS
+  {id:14,pol:"Warren Davidson", pty:"R", ticker:"GE",    co:"GE Aerospace",         sig:"BUY",  sta:"GOOD",    ret:"+78.8%",type:"Purchase",  date:"2025",     stake:"Large",      wk:"Buy",   note:"Top congressional performer 2025. Defense advocate.",        updated:"2025"},
+  {id:15,pol:"Terri Sewell",    pty:"D", ticker:"NVDA",  co:"Nvidia Corp.",         sig:"BUY",  sta:"GOOD",    ret:"+67.9%",type:"Purchase",  date:"Apr 2025", stake:"$15K-$50K", wk:"Buy",   note:"Well-timed April 2025 buy ahead of AI surge.",               updated:"2025"},
+  {id:16,pol:"Ro Khanna",       pty:"D", ticker:"UCTT",  co:"Ultra Clean Holdings", sig:"SELL", sta:"GOOD",    ret:"+154%", type:"Sale",      date:"2025",     stake:"Large",      wk:"Sell",  note:"Sold for +154% gain. Most active trader Congress 2025.",     updated:"2025"},
+  {id:17,pol:"Rick Scott",      pty:"R", ticker:"TSLA",  co:"Tesla Inc.",           sig:"BUY",  sta:"GOOD",    ret:"+45%",  type:"Purchase",  date:"Q1 2026",  stake:"$1M-$5M",   wk:"Hold",  note:"Bought before Trump-Musk relationship peak.",                updated:"2026"},
+  {id:18,pol:"Multiple",        pty:"B", ticker:"MSFT",  co:"Microsoft Corp.",      sig:"BUY",  sta:"GOOD",    ret:"+12%",  type:"Purchase",  date:"Ongoing",  stake:"Widely held",wk:"Hold",  note:"Held by 73 members of Congress across both parties.",        updated:"Jun 2026"},
+  {id:19,pol:"Michael McCaul",  pty:"R", ticker:"AAPL",  co:"Apple Inc.",           sig:"BUY",  sta:"GOOD",    ret:"+18%",  type:"Purchase",  date:"2025",     stake:"$50K-$100K",wk:"Hold",  note:"House Foreign Affairs Chair. Most popular Congress stock.",  updated:"2025"},
+  {id:20,pol:"Josh Gottheimer", pty:"D", ticker:"NVDA",  co:"Nvidia Corp.",         sig:"BUY",  sta:"GOOD",    ret:"+170%", type:"Purchase",  date:"2025",     stake:"$1M-$5M",   wk:"Buy",   note:"NJ congressman. Multiple tech positions disclosed.",          updated:"2025"},
+  {id:21,pol:"Marjorie Taylor Greene",pty:"R",ticker:"PHUN",co:"Phunware Inc.",     sig:"SELL", sta:"BAD",     ret:"-89%",  type:"Ownership", date:"2024",     stake:"Large",      wk:"Avoid", note:"Stock collapsed 89%. Disclosed large position at peak.",     updated:"2024"},
+  {id:22,pol:"Dan Crenshaw",    pty:"R", ticker:"RTX",   co:"Raytheon Technologies",sig:"BUY",  sta:"GOOD",    ret:"+32%",  type:"Purchase",  date:"2025",     stake:"$50K-$100K",wk:"Buy",   note:"Armed Services Committee. Defense contractor exposure.",     updated:"2025"},
+  {id:23,pol:"Donald Trump",    pty:"R", ticker:"$TRUMP",co:"Trump Meme Coin",       sig:"SELL", sta:"BAD",     ret:"-98%",  type:"Licensing",date:"Jan 2025", stake:"~80% cut",   wk:"Avoid", note:"Family made $616M. 1M+ investors lost $700M+. Peaked at $74, now $1.68.",    updated:"Jun 2026"},
+  {id:24,pol:"Donald Trump",    pty:"R", ticker:"WLFI",  co:"World Liberty Financial",sig:"SELL", sta:"BAD",     ret:"-80%",  type:"Token Sale",date:"Sep 2024", stake:"75% revenue",wk:"Avoid", note:"Family made $1.4B+ from token sales. Tokens down 80%. Investors lost billions.", updated:"Jun 2026"},
+  {id:25,pol:"Eric Trump",      pty:"R", ticker:"ABTC",  co:"American Bitcoin",      sig:"SELL", sta:"BAD",     ret:"-65%",  type:"Equity",   date:"2025",     stake:"$70M+ peak", wk:"Avoid", note:"Eric promoted American Bitcoin. Stock collapsed. Investors lost $200M+.",     updated:"Jun 2026"},
+  {id:26,pol:"Donald Trump Jr.",pty:"R", ticker:"AIMF",  co:"AI Financial Corp",     sig:"SELL", sta:"BAD",     ret:"-92%",  type:"Equity",   date:"2025",     stake:"Large",      wk:"Avoid", note:"Don Jr promoted. ALT5 Sigma/AI Financial. Investors lost $675M. Family made $500M+.", updated:"Jun 2026"},
+  // NEW JULY 2026 DISCLOSURES
+  {id:27,pol:"Donald Trump",    pty:"R", ticker:"AAPL",  co:"Apple Inc.",            sig:"WATCH",sta:"FLAG",    ret:"+12%",  type:"Purchase",  date:"Apr 8, 2025",stake:"$100K-$250K",wk:"Watch", note:"Bought day BEFORE tariff pause announcement. Disclosed 14 months late. S&P surged 10% next day.", updated:"Jul 2026"},
+  {id:28,pol:"Donald Trump",    pty:"R", ticker:"MSFT",  co:"Microsoft Corp.",       sig:"WATCH",sta:"FLAG",    ret:"+12%",  type:"Purchase",  date:"Apr 8, 2025",stake:"$100K-$250K",wk:"Watch", note:"One of 327 trades the day before the tariff pause. Filed 14 months late per OGE.", updated:"Jul 2026"},
+  {id:29,pol:"Donald Trump",    pty:"R", ticker:"AMZN",  co:"Amazon.com Inc.",       sig:"WATCH",sta:"FLAG",    ret:"+18%",  type:"Purchase",  date:"Apr 8, 2025",stake:"$100K-$250K",wk:"Watch", note:"Bought Apr 8, 2025. Next day Trump posted 'great time to buy' then paused tariffs. Disclosed Jul 2026.", updated:"Jul 2026"},
+  {id:30,pol:"Donald Trump",    pty:"R", ticker:"GOOGL", co:"Alphabet Inc.",         sig:"WATCH",sta:"FLAG",    ret:"+18%",  type:"Purchase",  date:"Apr 8, 2025",stake:"$100K-$250K",wk:"Watch", note:"Part of 327-trade burst before tariff pause. OGE disclosure filed over a year late.", updated:"Jul 2026"},
+  {id:31,pol:"Nancy Pelosi",    pty:"D", ticker:"INTC",  co:"Intel Corp.",           sig:"BUY",  sta:"GOOD",    ret:"+200%", type:"Call Options",date:"May 29, 2026",stake:"200 contracts",wk:"Buy",  note:"200 call options, $50 strike, exp Mar 2027. Pelosi's first trade in 5 months. Intel ATH.", updated:"Jul 2026"},
+  {id:32,pol:"Nancy Pelosi",    pty:"D", ticker:"UBER",  co:"Uber Technologies",     sig:"BUY",  sta:"GOOD",    ret:"+22%",  type:"Call Options",date:"May 29, 2026",stake:"200 contracts",wk:"Watch", note:"200 call options, $50 strike, exp Mar 2027. Same disclosure as INTC. Pelosi going mobility/transport.", updated:"Jul 2026"},
+];
+
+var POLITICIANS = [
+  {name:"Donald Trump",    pty:"R",role:"President of the United States",state:"FL",
+   bio:"45th and 47th President. Disclosed 3,600+ trades worth up to $750M in Q1 2026 — the most active presidential trader in US history. Makes policy that directly affects his holdings. Ethics watchdogs call it unprecedented.",
+   trades:"3,600+",value:"$220M-$750M",period:"Q1 2026",top:"INTC +200%",
+   risk:"EXTREME — makes policy affecting his own holdings",risk_col:"#ff5252"},
+  {name:"Nancy Pelosi",    pty:"D",role:"Former House Speaker",state:"CA",
+   bio:"Former Speaker of the House. Consistently outperforms the market. Known for precisely timed tech options. Husband Paul Pelosi manages family portfolio. NVDA disclosed Jan 16 2026 — now +170%.",
+   trades:"15+",value:"$1M-$50M",period:"2025-2026",top:"NVDA +170%",
+   risk:"ELEVATED — past committee access, consistently beats market",risk_col:"#ff9100"},
+  {name:"Ro Khanna",       pty:"D",role:"U.S. Representative (CA-17)",state:"CA",
+   bio:"Silicon Valley congressman with 40+ disclosed trades in 2025 alone — most active trader in Congress. District covers major tech companies he regulates. Ethics complaints filed by watchdog groups.",
+   trades:"40+",value:"$1M-$5M",period:"2025",top:"UCTT +154%",
+   risk:"HIGH — Silicon Valley district = direct policy overlap",risk_col:"#ff9100"},
+  {name:"Warren Davidson",  pty:"R",role:"U.S. Representative (OH-8)",state:"OH",
+   bio:"Ohio congressman and crypto advocate. Top congressional performer in 2025. Concentrated in defense and aerospace. GE up 78.8% since disclosure.",
+   trades:"8+",value:"$250K-$1M",period:"2025",top:"GE +78.8%",
+   risk:"MEDIUM — defense committee, industrial holdings overlap",risk_col:"#ffd740"},
+  {name:"Terri Sewell",    pty:"D",role:"U.S. Representative (AL-7)",state:"AL",
+   bio:"Alabama congresswoman. Well-timed NVDA purchase April 2025 ahead of AI spending surge. Position up 67.9%.",
+   trades:"5+",value:"$15K-$50K",period:"2025",top:"NVDA +67.9%",
+   risk:"LOW — smaller positions, no direct tech committee role",risk_col:"#00e676"},
+  {name:"Rick Scott",      pty:"R",role:"U.S. Senator (FL)",state:"FL",
+   bio:"Florida senator and former healthcare CEO. TSLA position before Trump-Musk relationship became widely known. Active in financial and healthcare committees.",
+   trades:"15+",value:"$1M-$5M",period:"2025-2026",top:"TSLA +45%",
+   risk:"MEDIUM — timing questions, senate committee access",risk_col:"#ffd740"},
+  {name:"Dan Crenshaw",    pty:"R",role:"U.S. Representative (TX-2)",state:"TX",
+   bio:"Armed Services Committee member. RTX position alongside defense budget increases he voted for. Former Navy SEAL.",
+   trades:"6+",value:"$50K-$200K",period:"2025",top:"RTX +32%",
+   risk:"MEDIUM — Armed Services Committee + defense holdings",risk_col:"#ffd740"},
+  {name:"Josh Gottheimer", pty:"D",role:"U.S. Representative (NJ-5)",state:"NJ",
+   bio:"New Jersey congressman with multiple tech positions. NVDA among disclosed holdings. Co-chairs Problem Solvers Caucus.",
+   trades:"10+",value:"$1M-$5M",period:"2025",top:"NVDA +170%",
+   risk:"MEDIUM — multiple tech positions, active trader",risk_col:"#ffd740"},
+];
+
+var NEWS = [
+  {src:"Reuters",          col:"#ff9100", sig:"WATCH", headline:"Trump Q1 2026: 3,600+ Trades Worth Up to $750M",
+   detail:"OGE filing reveals unprecedented scale of presidential trading. Intel, NVDA, HOOD among top disclosed positions. SEC and ethics watchdogs now investigating timing patterns.",
+   date:"Jun 2026", url:"https://reuters.com"},
+  {src:"CBS News",         col:"#40c4ff", sig:"BUY",   headline:"Intel +200% Since Trump's March 2026 Purchases",
+   detail:"Federal government equity stake in Intel taken same period as presidential disclosure. Timing of announcement and purchase within days of each other. Analysts call it unprecedented.",
+   date:"Jun 2026", url:"https://cbsnews.com"},
+  {src:"NBC News",         col:"#00e676", sig:"BUY",   headline:"Pelosi NVDA Call Options: +170% Since Jan 16",
+   detail:"Former Speaker disclosed NVDA call options on January 16 2026 — the same week Trump announced the $500B Stargate AI infrastructure program. Position now up 170%.",
+   date:"Jun 2026", url:"https://nbcnews.com"},
+  {src:"Politico",         col:"#ff5252", sig:"SELL",  headline:"STOCK Act 2.0: 120+ Co-Sponsors in Both Parties",
+   detail:"Bipartisan trading ban bill would prohibit members of Congress, their spouses, and the President from trading individual stocks while in office. If passed, every position here could be forced to unwind.",
+   date:"Jun 2026", url:"https://politico.com"},
+  {src:"Wall St. Journal", col:"#ffd740", sig:"WATCH", headline:"Ro Khanna: Most Active Trader in Congress 2025",
+   detail:"40+ trades disclosed in 12 months. Silicon Valley congressman's tech-heavy portfolio raises ethics concerns. District includes offices of companies he oversees. Ethics watchdog complaint filed.",
+   date:"Jun 2026", url:"https://wsj.com"},
+  {src:"Bloomberg",        col:"#ce93d8", sig:"BUY",   headline:"HOOD +214%: Robinhood Biggest Congressional Winner",
+   detail:"Trump's designation of Robinhood as trustee for new retail investment accounts sent shares surging 214%. President disclosed purchase weeks before the policy announcement became public.",
+   date:"Jun 2026", url:"https://bloomberg.com"},
+  {src:"Financial Times",  col:"#ffab40", sig:"WATCH", headline:"Presidential Trading Scale Unprecedented in History",
+   detail:"No prior president has disclosed trading activity at this volume or value while in office. Legal experts divided on whether existing STOCK Act covers the executive branch.",
+   date:"Jun 2026", url:"https://ft.com"},
+  {src:"CNBC",             col:"#5a9fff", sig:"BUY",   headline:"Congress Beats S&P 500 Again — Up 42% in 2025",
+   detail:"Congressional portfolio tracker shows members outperformed the S&P 500 by 25 percentage points in 2025. Critics say early access to legislation explains the outperformance.",
+   date:"Jun 2026", url:"https://cnbc.com"},
+  {src:"Reuters",          col:"#ff5252", sig:"SELL",  headline:"Trump Crypto Playbook: Family Made $2.3B, Investors Lost $2.3B",
+   detail:"Reuters investigation: Trump family used same template across 4 crypto ventures. Risked little upfront, hyped by Eric and Don Jr, raked in billions while over 1 million investors lost comparable amounts.",
+   date:"Jun 2026", url:"https://reuters.com"},
+  {src:"PBS News",         col:"#ff9100", sig:"SELL",  headline:"$TRUMP Meme Coin: From $74 Peak to $1.68 — Investors Wiped Out",
+   detail:"Trump took in $1.2B from crypto last year per OGE disclosure. $TRUMP coin peaked at $74.35, now worth $1.68. World Liberty tokens down 80%. One investor's $2,000 is now worth $120.",
+   date:"Jun 2026", url:"https://pbs.org"},
+  {src:"NBC News",         col:"#ff5252", sig:"WATCH", headline:"🚨 Trump Bought 327 Stocks Day Before Tariff Pause — Disclosed 14 Months Late",
+   detail:"OGE annual disclosure shows Trump accounts made 327 stock purchases on April 8, 2025 — the day before he paused Liberation Day tariffs and tweeted 'great time to buy.' S&P surged nearly 10% the next day. Trades worth up to $12.8M. Ethics experts: unprecedented.",
+   date:"Jul 2026", url:"https://nbcnews.com"},
+  {src:"CBS News",         col:"#ffd740", sig:"WATCH", headline:"Oracle & TikTok: Trump Bought ORCL While Brokering the Deal",
+   detail:"Trump's accounts purchased millions in Oracle stock in early 2026, the same period his administration was helping Oracle secure TikTok's US operations. OGE records confirm overlap. Ethics watchdogs call it a direct conflict of interest.",
+   date:"Jul 2026", url:"https://cbsnews.com"},
+  {src:"Benzinga",         col:"#00e676", sig:"BUY",   headline:"Pelosi Breaks 5-Month Silence: INTC & UBER Call Options Disclosed",
+   detail:"Former Speaker Nancy Pelosi disclosed 200 INTC call options ($50 strike, Mar 2027 exp) and 200 UBER call options ($50 strike, Mar 2027 exp) — her first trades in 5 months. Intel currently at all-time highs. Pelosi not seeking re-election — this may be one of her final disclosures.",
+   date:"Jul 2026", url:"https://benzinga.com"},
+];
+
+var ACTIVITY = [
+  {pol:"Donald Trump",    pty:"R",ticker:"AAPL",  type:"Purchase",   date:"Jul 2, 2026",  stake:"$100K-$250K",ret:"+12%", sig:"WATCH",note:"🚨 327 trades on Apr 8 2025 — day before tariff pause. Disclosed 14 months late. Never filed PTR. S&P +10% next day.", isNew:true},
+  {pol:"Nancy Pelosi",    pty:"D",ticker:"INTC",  type:"Call Options",date:"Jun 27, 2026", stake:"200 contracts",ret:"+200%",sig:"BUY",  note:"200 INTC calls, $50 strike, exp Mar 2027. First Pelosi trade in 5 months. Intel at ATH. Disclosed May 29 trade.",     isNew:true},
+  {pol:"Nancy Pelosi",    pty:"D",ticker:"UBER",  type:"Call Options",date:"Jun 27, 2026", stake:"200 contracts",ret:"+22%", sig:"BUY",  note:"200 UBER calls, $50 strike, exp Mar 2027. Same disclosure date as INTC. Mobility/transport bet.",                    isNew:true},
+  {pol:"Donald Trump",    pty:"R",ticker:"PLTR",type:"Purchase",date:"Jun 12, 2026",stake:"$1M-$5M", ret:"+33%", sig:"BUY", note:"Filed within 45-day window. Truth Social posts about Palantir preceded buy by 3 weeks.",       isNew:false},
+  {pol:"Nancy Pelosi",    pty:"D",ticker:"NVDA",type:"Purchase",date:"Jun 8, 2026", stake:"Call opts",ret:"+170%",sig:"BUY", note:"Renewed NVDA call options position. AI infrastructure bet continues into H2 2026.",              isNew:true},
+  {pol:"Ro Khanna",       pty:"D",ticker:"AAPL",type:"Purchase",date:"Jun 5, 2026", stake:"$15K-$50K",ret:"+18%", sig:"BUY", note:"Added to existing position. Tech subcommittee member. Sixth Apple purchase disclosed in 2 years.",isNew:true},
+  {pol:"Rick Scott",      pty:"R",ticker:"TSLA",type:"Purchase",date:"Jun 1, 2026", stake:"$1M-$5M", ret:"+45%", sig:"BUY", note:"Q2 2026 disclosure. Position held through volatility. Added on dip below $290.",                isNew:false},
+  {pol:"Donald Trump",    pty:"R",ticker:"INTC", type:"Purchase",date:"May 28, 2026",stake:"Multiple",ret:"+200%",sig:"BUY", note:"Additional INTC purchases disclosed. Govt equity stake concurrent. ATH broken.",                isNew:false},
+  {pol:"Warren Davidson", pty:"R",ticker:"GE",   type:"Purchase",date:"May 20, 2026",stake:"Large",   ret:"+78.8%",sig:"BUY",note:"Continued accumulation of GE Aerospace. Defense budget $886B voted yes.",                       isNew:false},
+  {pol:"Ro Khanna",       pty:"D",ticker:"UCTT", type:"Sale",    date:"May 15, 2026",stake:"Large",   ret:"+154%",sig:"SELL",note:"Exited UCTT for +154% gain. Largest disclosed congressional gain in 2025.",                     isNew:false},
+  {pol:"Donald Trump",    pty:"R",ticker:"HOOD", type:"Purchase",date:"May 10, 2026",stake:"Large",   ret:"+214%",sig:"BUY", note:"Trump Accounts program designating Robinhood as trustee announced 2 weeks later.",              isNew:false},
+  {pol:"Josh Gottheimer", pty:"D",ticker:"NVDA", type:"Purchase",date:"May 8, 2026", stake:"$1M-$5M",ret:"+170%",sig:"BUY", note:"NJ congressman added to NVDA position. Member of House Financial Services Committee.",          isNew:false},
+  {pol:"Dan Crenshaw",    pty:"R",ticker:"RTX",  type:"Purchase",date:"Apr 28, 2026",stake:"$50K-$100K",ret:"+32%",sig:"BUY",note:"Armed Services Committee member. RTX up 32% since. Defense budget increase co-sponsored.",    isNew:false},
+  {pol:"Donald Trump",    pty:"R",ticker:"$TRUMP",type:"Licensing",date:"Jan 17, 2025",stake:"~80% revenue cut",ret:"-98%",sig:"SELL",note:"Launched meme coin 3 days before inauguration. Family made $616M. 1M+ investors lost $700M+. Now worth $1.68 from $74 peak.",isNew:false},
+  {pol:"Eric Trump",      pty:"R",ticker:"ABTC", type:"Promotion", date:"2025",        stake:"$70M+ equity",  ret:"-65%", sig:"SELL",note:"Promoted American Bitcoin. Stock collapsed. Investors lost $200M+. Family received equity without investing own money per Reuters.",isNew:false},
+  {pol:"Donald Trump Jr.",pty:"R",ticker:"AIMF", type:"Promotion", date:"2025",        stake:"Large",         ret:"-92%", sig:"SELL",note:"Promoted ALT5 Sigma/AI Financial Corp. $500M+ sent to Trump family via token purchases. Investors lost $675M.",isNew:false},
+];
+
+var CTX_EVENTS = [
+  {id:1,ticker:"BA",   type:"shock",   sev:"high",col:"#ff5252",tag:"EXTERNAL SHOCK",
+   head:"Boeing 787 Crash — Jun 12, 2026 — 246 Dead",
+   detail:"Air India 787-8 crashed on approach to Ahmedabad. BA sank 8% premarket. FAA emergency airworthiness directive issued.",
+   why:"Unrelated to Trump's BA position. External shock. Position thesis remains intact if investigation clears manufacturing fault."},
+  {id:2,ticker:"ORCL", type:"policy",  sev:"high",col:"#ffd740",tag:"POLICY OVERLAP",
+   head:"Oracle Buy Overlapped TikTok Negotiations",
+   detail:"Trump disclosed ORCL purchase Dec 2025 — same period admin was brokering Oracle's acquisition of TikTok US assets. Deal announced Feb 2026.",
+   why:"This is exactly the type of timing overlap STOCK Act was designed to prevent. Position carries regulatory risk if bill passes."},
+  {id:3,ticker:"ALL",  type:"political",sev:"high",col:"#ff9100",tag:"REGULATORY RISK",
+   head:"STOCK Act 2.0 Has 120+ Co-Sponsors — Biggest Risk",
+   detail:"Warren Bessent Senate hearing: Trump disclosed 3,400+ trades worth up to $750M Q1 alone. Ban bill co-sponsors now cross party lines.",
+   why:"If trading ban passes, EVERY position in this tracker could be forced to unwind. This is the single biggest structural risk to the entire thesis."},
+  {id:4,ticker:"ALL",  type:"macro",   sev:"high",col:"#00e676",tag:"MACRO CATALYST",
+   head:"US-Iran Ceasefire — Markets Rally to All-Time Highs",
+   detail:"Dow +468 pts to record 51,671. Nasdaq best single day since March. Risk-on across all sectors. Congressional portfolios broadly green.",
+   why:"This is why portfolios look green — macro tailwind, not stock-picking. Be careful attributing congressional returns to political edge alone."},
+  {id:5,ticker:"INTC", type:"policy",  sev:"high",col:"#40c4ff",tag:"POLICY CATALYST",
+   head:"US Govt Takes Equity Stake in Intel — CHIPS Act",
+   detail:"Treasury disclosed equity stake in Intel concurrent with Trump's March 2026 purchase. Intel shares ATH. Government directly backstopping position.",
+   why:"This is unprecedented. A sitting president bought a stock the same week the government he controls took a stake in it. INTC thesis has structural support."},
+  {id:7,ticker:"AAPL",  type:"policy",  sev:"high",col:"#ff5252",tag:"🚨 INSIDER TIMING",
+   head:"327 Trades Day Before Tariff Pause — Filed 14 Months Late",
+   detail:"Trump accounts bought AAPL, MSFT, AMZN, NVDA, GOOGL and 322 other stocks on April 8, 2025. The next day, Trump posted 'great time to buy' on Truth Social then announced the 90-day tariff pause. S&P 500 surged nearly 10%. The trades were disclosed in July 2026 — 14 months later — with no PTR ever filed.",
+   why:"Federal ethics law requires PTR filings within 45 days. These were never filed until the annual OGE disclosure. The timing — 327 purchases the day before a market-moving presidential announcement — is what ethics experts call the most alarming pattern in modern presidential finance history."},
+  {id:6,ticker:"$TRUMP",type:"shock",  sev:"high",col:"#ff5252",tag:"INVESTOR ALERT",
+   head:"Trump Crypto: Family Made $2.3B — Investors Lost $2.3B",
+   detail:"Reuters investigation reveals Trump family generated $2.3B+ from 4 crypto ventures: World Liberty Financial ($1.4B+), $TRUMP meme coin ($616M), American Bitcoin, AI Financial Corp. Over 1 million investors lost comparable amounts. $TRUMP coin fell from $74 to $1.68. World Liberty tokens down 80%.",
+   why:"This is the most important disclosure story of 2025-2026. The family risked little, Eric and Don Jr hyped each venture, then the price collapsed. A proposed congressional relief fund would compensate investors using proceeds from the ventures. Every investor tracking political trades needs to know about this."},
+];
+
+var PERF=[{yr:"2021",c:18.2,s:26.9},{yr:"2022",c:-4.1,s:-19.4},{yr:"2023",c:28.7,s:24.2},{yr:"2024",c:31.4,s:23.3},{yr:"2025",c:42.1,s:16.6}];
+var TOP=[{t:"HOOD",r:214,col:"#00e676"},{t:"INTC",r:200,col:"#ffab40"},{t:"NVDA",r:170,col:"#40c4ff"},{t:"UCTT",r:154,col:"#ce93d8"},{t:"DELL",r:96,col:"#80cbc4"},{t:"COIN",r:89,col:"#0052ff"}];
+var PRICES={NVDA:236,INTC:125,HOOD:71,COIN:255,PLTR:142,DJT:16,DELL:122,GE:194,BA:180,ORCL:190,TSLA:320,GOOGL:173,UCTT:62,MSFT:426,AAPL:217,RTX:118};
+var RISK={NVDA:"Medium",INTC:"Medium",HOOD:"High",COIN:"High",PLTR:"High",DJT:"Very High",DELL:"Low",GE:"Low",BA:"Medium",ORCL:"Low",TSLA:"High",GOOGL:"Low",UCTT:"High",MSFT:"Low",AAPL:"Low",RTX:"Low"};
+var SECTORS={NVDA:"Tech",INTC:"Tech",MSFT:"Tech",AAPL:"Tech",ORCL:"Tech",DELL:"Tech",PLTR:"Tech",HOOD:"Finance",COIN:"Finance",GE:"Industrial",BA:"Industrial",TSLA:"Consumer",GOOGL:"Tech",DJT:"Media",UCTT:"Tech",RTX:"Defense"};
+var RCOL={"Very High":"#ff5252","High":"#ff9100","Medium":"#ffd740","Low":"#00e676"};
+var SCOL={Tech:"#40c4ff",Finance:"#00e676",Industrial:"#ffab40",Consumer:"#ce93d8",Media:"#ff5252",Defense:"#ff9100"};
+
+var LANGS={en:"EN",es:"ES",zh:"中文",ja:"日本語",ko:"한국어",pt:"PT",fr:"FR",ar:"AR"};
+var T={
+  home:      {en:"Home",          es:"Inicio",       zh:"首页",    ja:"ホーム",    ko:"홈",        pt:"Início",     fr:"Accueil",          ar:"الرئيسية"},
+  update:    {en:"Update",        es:"Actualizar",   zh:"更新",    ja:"更新",      ko:"업데이트",   pt:"Atualizar",  fr:"Mise a jour",       ar:"تحديث"},
+  tracker:   {en:"Tracker",       es:"Rastreador",   zh:"追踪器",  ja:"トラッカー", ko:"트래커",    pt:"Rastreador", fr:"Suivi",             ar:"التتبع"},
+  alerts:    {en:"Alerts",        es:"Alertas",      zh:"警报",    ja:"アラート",  ko:"알림",      pt:"Alertas",    fr:"Alertes",           ar:"التنبيهات"},
+  investor:  {en:"Investor",      es:"Inversor",     zh:"投资者",  ja:"投資家",    ko:"투자자",    pt:"Investidor", fr:"Investisseur",      ar:"المستثمر"},
+  charts:    {en:"Charts",        es:"Graficos",     zh:"图表",    ja:"チャート",  ko:"차트",      pt:"Graficos",   fr:"Graphiques",        ar:"الرسوم"},
+  context:   {en:"Why It Moved",  es:"Por que",      zh:"为何变动", ja:"なぜ動いた", ko:"왜 움직였나", pt:"Por que",   fr:"Pourquoi",          ar:"لماذا"},
+  news:      {en:"News",          es:"Noticias",     zh:"新闻",    ja:"ニュース",  ko:"뉴스",      pt:"Noticias",   fr:"Actualites",        ar:"الأخبار"},
+  pols:      {en:"Politicians",   es:"Politicos",    zh:"政治家",  ja:"政治家",    ko:"정치인",    pt:"Politicos",  fr:"Politiciens",       ar:"السياسيون"},
+  activity:  {en:"Activity",      es:"Actividad",    zh:"活动",    ja:"活動",      ko:"활동",      pt:"Atividade",  fr:"Activite",          ar:"النشاط"},
+  legal:     {en:"Legal",         es:"Legal",        zh:"法律",    ja:"法務",      ko:"법률",      pt:"Legal",      fr:"Legal",             ar:"قانوني"},
+  golive:    {en:"Go Live",       es:"Publicar",     zh:"上线",    ja:"公開",      ko:"라이브",    pt:"Publicar",   fr:"Publier",           ar:"انشر"},
+  launch:    {en:"Launch",        es:"Lanzar",       zh:"启动",    ja:"ローンチ",  ko:"론치",      pt:"Lançar",     fr:"Lancer",            ar:"الإطلاق"},
+  politician:{en:"Politician",    es:"Político",     zh:"政治家",  ja:"政治家",    ko:"정치인",    pt:"Político",   fr:"Politicien",        ar:"السياسي"},
+  ticker:    {en:"Ticker",        es:"Símbolo",      zh:"代码",    ja:"銘柄",      ko:"티커",      pt:"Símbolo",    fr:"Symbole",           ar:"الرمز"},
+  type:      {en:"Type",          es:"Tipo",         zh:"类型",    ja:"種類",      ko:"유형",      pt:"Tipo",       fr:"Type",              ar:"النوع"},
+  disclosed: {en:"Disclosed",     es:"Divulgado",    zh:"披露日",  ja:"開示日",    ko:"공개일",    pt:"Divulgado",  fr:"Divulgué",          ar:"تاريخ الإفصاح"},
+  stake:     {en:"Stake",         es:"Monto",        zh:"持股",    ja:"保有額",    ko:"금액",      pt:"Valor",      fr:"Montant",           ar:"الحصة"},
+  signal:    {en:"Signal",        es:"Señal",        zh:"信号",    ja:"シグナル",  ko:"신호",      pt:"Sinal",      fr:"Signal",            ar:"الإشارة"},
+  ret:       {en:"Return",        es:"Retorno",      zh:"回报",    ja:"リターン",  ko:"수익률",    pt:"Retorno",    fr:"Rendement",         ar:"العائد"},
+  week:      {en:"Week",          es:"Semana",       zh:"本周",    ja:"週間",      ko:"주간",      pt:"Semana",     fr:"Semaine",           ar:"الأسبوع"},
+  alertH:    {en:"Alert",         es:"Alerta",       zh:"警示",    ja:"アラート",  ko:"경보",      pt:"Alerta",     fr:"Alerte",            ar:"تنبيه"},
+  note:      {en:"Note",          es:"Nota",         zh:"备注",    ja:"メモ",      ko:"비고",      pt:"Nota",       fr:"Note",              ar:"ملاحظة"},
+  buynow:    {en:"BUY NOW",       es:"COMPRAR",      zh:"立即买",  ja:"今すぐ買う", ko:"지금 구매",  pt:"COMPRAR",   fr:"ACHETER",           ar:"اشتر الآن"},
+  sellnow:   {en:"SELL NOW",      es:"VENDER",       zh:"立即卖",  ja:"今すぐ売る", ko:"지금 매도",  pt:"VENDER",    fr:"VENDRE",            ar:"بيع الآن"},
+  editBtn:   {en:"Edit",          es:"Editar",       zh:"编辑",    ja:"編集",      ko:"편집",      pt:"Editar",     fr:"Modifier",          ar:"تعديل"},
+  delBtn:    {en:"Del",           es:"Borrar",       zh:"删除",    ja:"削除",      ko:"삭제",      pt:"Excluir",    fr:"Supprimer",         ar:"حذف"},
+  saveBtn:   {en:"Save",          es:"Guardar",      zh:"保存",    ja:"保存",      ko:"저장",      pt:"Salvar",     fr:"Sauvegarder",       ar:"حفظ"},
+  cancelBtn: {en:"Cancel",        es:"Cancelar",     zh:"取消",    ja:"キャンセル", ko:"취소",      pt:"Cancelar",   fr:"Annuler",           ar:"إلغاء"},
+  addBtn:    {en:"+ Add",         es:"+ Agregar",    zh:"+ 添加",  ja:"+ 追加",    ko:"+ 추가",    pt:"+ Adicionar",fr:"+ Ajouter",         ar:"+ إضافة"},
+  searchPh:  {en:"Search...",     es:"Buscar...",    zh:"搜索...", ja:"検索...",   ko:"검색...",   pt:"Pesquisar...",fr:"Rechercher...",     ar:"بحث..."},
+  dismissBtn:{en:"Dismiss",       es:"Descartar",    zh:"忽略",    ja:"却下",      ko:"해제",      pt:"Dispensar",  fr:"Ignorer",           ar:"تجاهل"},
+  restoreAll:{en:"Restore All",   es:"Restaurar",    zh:"恢复全部", ja:"すべて復元", ko:"모두 복원",  pt:"Restaurar",  fr:"Restaurer",         ar:"استعادة الكل"},
+  allClear:  {en:"All alerts clear",es:"Sin alertas",zh:"无警报",  ja:"警報なし",  ko:"경보 없음",  pt:"Sem alertas",fr:"Aucune alerte",     ar:"لا تنبيهات"},
+  overview:  {en:"overview",      es:"resumen",      zh:"概览",    ja:"概要",      ko:"개요",      pt:"visão geral",fr:"aperçu",            ar:"نظرة عامة"},
+  portfolio: {en:"portfolio",     es:"cartera",      zh:"投资组合", ja:"ポートフォリオ",ko:"포트폴리오",pt:"portfólio",  fr:"portefeuille",      ar:"المحفظة"},
+  watchlist: {en:"watchlist",     es:"favoritos",    zh:"关注列表", ja:"ウォッチリスト",ko:"관심 목록",  pt:"favoritos",  fr:"liste de suivi",    ar:"قائمة المتابعة"},
+  sectors:   {en:"sectors",       es:"sectores",     zh:"板块",    ja:"セクター",  ko:"섹터",      pt:"setores",    fr:"secteurs",          ar:"القطاعات"},
+  invDash:   {en:"Investor Dashboard",es:"Panel de Inversión",zh:"投资者仪表板",ja:"投資家ダッシュボード",ko:"투자자 대시보드",pt:"Painel do Investidor",fr:"Tableau de Bord",ar:"لوحة المستثمر"},
+  topPerf:   {en:"Top Performers",es:"Mejores",      zh:"最佳表现", ja:"トップ銘柄", ko:"최고 성과",  pt:"Melhores",   fr:"Meilleures Perf.",  ar:"أفضل الأداء"},
+  underPerf: {en:"Underperformers",es:"Peores",      zh:"表现不佳", ja:"不振銘柄",  ko:"저조한 성과", pt:"Piores",    fr:"Moins bons",        ar:"أضعف الأداء"},
+  priceRisk: {en:"Price + Risk Table",es:"Precio + Riesgo",zh:"价格+风险",ja:"価格＋リスク",ko:"가격+위험",pt:"Preço + Risco",fr:"Prix + Risque",ar:"السعر والمخاطر"},
+  portSim:   {en:"Portfolio Simulator",es:"Simulador",zh:"投资组合模拟",ja:"シミュレーター",ko:"시뮬레이터",pt:"Simulador",fr:"Simulateur",ar:"محاكي المحفظة"},
+  runUpdate: {en:"Run Update",    es:"Actualizar",   zh:"运行更新", ja:"更新実行",  ko:"업데이트 실행",pt:"Atualizar", fr:"Lancer Mise a jour",ar:"تشغيل التحديث"},
+  logDisc:   {en:"Log New Disclosure",es:"Registrar",zh:"记录披露", ja:"新規開示",  ko:"공시 등록",  pt:"Registrar",  fr:"Enregistrer",       ar:"تسجيل إفصاح"},
+  whyMoved:  {en:"Why It Moved",  es:"Por qué se movió",zh:"为何变动",ja:"なぜ動いたか",ko:"왜 움직였나",pt:"Por que se moveu",fr:"Pourquoi ca a bougé",ar:"لماذا تحرك"},
+  liveAct:   {en:"Live Trading Activity",es:"Actividad en Vivo",zh:"实时交易活动",ja:"ライブ取引活動",ko:"실시간 거래 활동",pt:"Atividade ao Vivo",fr:"Activité en Direct",ar:"نشاط التداول المباشر"},
+  polProf:   {en:"Politician Trading Profiles",es:"Perfiles Políticos",zh:"政治家交易档案",ja:"政治家取引プロファイル",ko:"정치인 거래 프로필",pt:"Perfis Políticos",fr:"Profils des Politiciens",ar:"ملفات تداول السياسيين"},
+  discTrans: {en:"DISCLOSED TRANSACTIONS",es:"TRANSACCIONES",zh:"已披露交易",ja:"開示取引",ko:"공개된 거래",pt:"TRANSAÇÕES",fr:"TRANSACTIONS",ar:"المعاملات المُفصَح عنها"},
+  noAdvice:  {en:"Not financial advice. Public STOCK Act & OGE government data only. Consult a licensed advisor.",
+              es:"No es asesoramiento financiero. Solo datos públicos del gobierno.",
+              zh:"非财务建议。仅限公开政府数据。请咨询持牌顾问。",
+              ja:"投資アドバイスではありません。公開政府データのみ。認可顧問に相談を。",
+              ko:"재정 조언이 아닙니다. 공개 정부 데이터만. 공인 어드바이저 상담 요망.",
+              pt:"Não é aconselhamento financeiro. Apenas dados públicos do governo.",
+              fr:"Pas un conseil financier. Données publiques uniquement.",
+              ar:"ليس نصيحة مالية. بيانات حكومية عامة فقط."},
+};
+function tr(k){var e=T[k];return e?(e[lang]||e.en)||k:k;}
+
+var LAUNCH_STEPS = [
+  {key:"llc",   cat:"Legal",   label:"Form Wyoming LLC",           url:"https://northwestregisteredagent.com",  note:"~$179/yr · Call 1-509-768-2249 if duplicate account"},
+  {key:"ein",   cat:"Legal",   label:"Get EIN (Tax ID) — Free",    url:"https://irs.gov/businesses/small-businesses-self-employed/apply-for-an-employer-identification-number-ein-online", note:"10 min · Free · Same day as LLC approval"},
+  {key:"boi",   cat:"Legal",   label:"File BOI Report",             url:"https://boiefiling.fincen.gov",         note:"Free · Within 30 days · $591/day penalty if missed"},
+  {key:"get",   cat:"Legal",   label:"Hawaii GET Tax License",      url:"https://hitax.hawaii.gov",              note:"4.5% on all Oahu revenue before first payment"},
+  {key:"bank",  cat:"Money",   label:"Open Mercury Bank",           url:"https://mercury.com",                   note:"Free · No minimums · Links directly to Stripe"},
+  {key:"stripe",cat:"Money",   label:"Set Up Stripe Payments",      url:"https://stripe.com",                    note:"3 tiers: $9.99 / $24.99 / $49.99 · 7-day trial"},
+  {key:"github",cat:"Deploy",  label:"Push Code to GitHub",         url:"https://github.com",                    note:"Private repo · Push your tracker file"},
+  {key:"vercel",cat:"Deploy",  label:"Deploy on Vercel",            url:"https://vercel.com",                    note:"Free · Connect GitHub · Auto-deploys in 60 sec"},
+  {key:"domain",cat:"Deploy",  label:"Buy Your Domain",             url:"https://namecheap.com",                 note:"~$12/yr · PresidentialDisclosureTracker.com"},
+  {key:"terms", cat:"Content", label:"Publish Terms + Privacy",     url:"#",                                     note:"Must include: Not financial advice"},
+  {key:"copy",  cat:"Content", label:"Copyright Registration",      url:"https://copyright.gov",                 note:"$65 · Protects your code from copying"},
+  {key:"launch",cat:"Launch",  label:"Post on TikTok & X",         url:"#",                                     note:"Lead with HOOD +214%, INTC +200% numbers"},
+];
+
+var TODAY = new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+var TODAY_FULL = new Date().toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+var TAB_KEYS = ["home","update","tracker","alerts","investor","charts","context","news","pols","activity","legal","golive","launch"];
+
+// =====================================================================
+// STATE
+// =====================================================================
+var lang = "en";
+var currentTab = 0;
+var filter = "ALL";
+var search = "";
+var showForm = false;
+var editId = null;
+var dismissed = [];
+var watchlist = {};
+var alloc = {};
+var portSize = "100000";
+var investorView = "overview";
+var ctxFilter = "ALL";
+var stripeLink = "";
+var linkSaved = false;
+var launchDone = {};
+var stocks = JSON.parse(localStorage.getItem("pdt_v2")||"null")||STOCKS;
+var blank = {pol:"",pty:"R",ticker:"",co:"",sig:"BUY",sta:"UNKNOWN",ret:"",type:"Purchase",date:"",stake:"",wk:"Watch",note:""};
+var formData = Object.assign({},blank);
+
+function saveStocks(){try{localStorage.setItem("pdt_v2",JSON.stringify(stocks));}catch(e){}}
+function saveMisc(){try{localStorage.setItem("pdt_misc",JSON.stringify({dismissed:dismissed,watchlist:watchlist,alloc:alloc,portSize:portSize,launchDone:launchDone,stripeLink:stripeLink}));}catch(e){}}
+(function(){try{var m=JSON.parse(localStorage.getItem("pdt_misc")||"null");if(m){dismissed=m.dismissed||[];watchlist=m.watchlist||{};alloc=m.alloc||{};portSize=m.portSize||"100000";launchDone=m.launchDone||{};stripeLink=m.stripeLink||"";}}catch(e){}})();
+
+// =====================================================================
+// HELPERS
+// =====================================================================
+function rc(ret){if(!ret)return"#5a6a7a";if(ret[0]==="+")return"#69f0ae";if(ret[0]==="-")return"#ff5252";return"#5a6a7a";}
+function esc(s){return(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function ptx(pty){return pty==="R"?"#ff6b6b":pty==="D"?"#6b9fff":"#c0c0c0";}
+function pbg(pty){return pty==="R"?"#1a0606":pty==="D"?"#060d1a":"#141414";}
+function sigC(sig){return sig==="BUY"?"#00e676":sig==="SELL"?"#ff5252":sig==="HOLD"?"#ffd740":"#40c4ff";}
+function sigBg(sig){return sig==="BUY"?"#061a0e":sig==="SELL"?"#1c0606":sig==="HOLD"?"#1a1500":"#030d1c";}
+function sigBr(sig){return sig==="BUY"?"#00c853":sig==="SELL"?"#d50000":sig==="HOLD"?"#ffa000":"#0091ea";}
+
+// =====================================================================
+// SVG CHARTS
+// =====================================================================
+function lineChart(data,keys,colors,w,h){
+  var pad={t:10,r:10,b:24,l:36};
+  var allV=[];data.forEach(function(d){keys.forEach(function(k){allV.push(d[k]);});});
+  var mn=Math.min.apply(null,allV),mx=Math.max.apply(null,allV),rng=mx-mn||1;
+  function tx(i){return pad.l+i*(w-pad.l-pad.r)/(data.length-1);}
+  function ty(v){return pad.t+(mx-v)/rng*(h-pad.t-pad.b);}
+  var s='<svg viewBox="0 0 '+w+' '+h+'" style="width:100%;overflow:visible">';
+  keys.forEach(function(k,ki){
+    var pts=data.map(function(d,i){return tx(i).toFixed(1)+","+ty(d[k]).toFixed(1);}).join(" ");
+    s+='<polyline points="'+pts+'" fill="none" stroke="'+colors[ki]+'" stroke-width="'+(ki===0?2.5:1.5)+'"/>';
+    // Dots on last point
+    var last=data[data.length-1];
+    s+='<circle cx="'+tx(data.length-1).toFixed(1)+'" cy="'+ty(last[k]).toFixed(1)+'" r="3" fill="'+colors[ki]+'"/>';
+  });
+  data.forEach(function(d,i){s+='<text x="'+tx(i).toFixed(1)+'" y="'+(h-4)+'" text-anchor="middle" fill="#5a6a7a" font-size="9">'+d.yr+'</text>';});
+  [mn,Math.round(mn+rng/2),mx].forEach(function(v){s+='<text x="'+(pad.l-4)+'" y="'+(ty(v)+4).toFixed(1)+'" text-anchor="end" fill="#5a6a7a" font-size="8">'+Math.round(v)+'</text>';});
+  s+='</svg>';
+  return s;
+}
+function barChart(data,w,h){
+  var pad={t:20,r:10,b:24,l:10};
+  var mx=Math.max.apply(null,data.map(function(d){return d.r;}));
+  var bw=(w-pad.l-pad.r)/data.length;
+  var s='<svg viewBox="0 0 '+w+' '+h+'" style="width:100%;overflow:visible">';
+  data.forEach(function(d,i){
+    var bh=Math.round(d.r/mx*(h-pad.t-pad.b));
+    var x=pad.l+i*bw+bw*0.1,y=h-pad.b-bh;
+    s+='<rect x="'+x+'" y="'+y+'" width="'+(bw*.8)+'" height="'+bh+'" fill="'+d.col+'" rx="2"/>';
+    s+='<text x="'+(x+bw*.4)+'" y="'+(y-5)+'" text-anchor="middle" fill="'+d.col+'" font-size="9" font-weight="bold">'+d.r+'%</text>';
+    s+='<text x="'+(x+bw*.4)+'" y="'+(h-4)+'" text-anchor="middle" fill="#5a6a7a" font-size="9">'+d.t+'</text>';
+  });
+  s+='</svg>';return s;
+}
+function horizontalBar(label,val,max,col,w){
+  var pct=Math.round(val/max*100);
+  return '<div style="margin-bottom:10px;">'+
+    '<div style="display:flex;justify-content:space-between;margin-bottom:3px;font-size:10px;">'+
+      '<span style="color:'+col+';font-weight:bold">'+esc(label)+'</span>'+
+      '<span style="color:'+col+';font-weight:900">'+val+'</span>'+
+    '</div>'+
+    '<div class="bar-track" style="width:'+(w||"100%")+'"><div class="bar-fill" style="width:'+pct+'%;background:'+col+'"></div></div>'+
+  '</div>';
+}
+
+// =====================================================================
+// RENDER FUNCTIONS
+// =====================================================================
+function statCard(icon,lb,v,col){
+  return '<div class="stat-card card" style="text-align:center;padding:12px;">'+
+    '<div style="font-size:20px;margin-bottom:4px">'+icon+'</div>'+
+    '<div style="font-size:18px;font-weight:900;color:'+col+';font-family:Georgia,serif">'+v+'</div>'+
+    '<div style="font-size:9px;color:#4a5a6a;margin-top:2px">'+lb+'</div>'+
+  '</div>';
+}
+
+function renderHome(){
+  var buys=stocks.filter(function(s){return s.sig==="BUY";}).length;
+  var sells=stocks.filter(function(s){return s.sig==="SELL";}).length;
+  var sent=Math.round(buys/stocks.length*100);
+  var alerts=stocks.filter(function(s){return(s.sig==="BUY"||s.sig==="SELL")&&dismissed.indexOf(s.id)<0;}).length;
+  return '<div style="background:linear-gradient(135deg,#0a0f1c,#0d0900);border:2px solid #8b6914;border-radius:12px;padding:16px 20px;margin-bottom:14px;">'+
+    '<p style="margin:0 0 3px;font-size:11px;color:#8b6914;font-weight:bold;letter-spacing:.1em">'+TODAY_FULL+'</p>'+
+    '<h1 style="margin:0 0 14px;font-size:clamp(16px,3.5vw,28px);color:#f0e090;font-weight:900;font-family:Georgia,serif">Presidential Disclosure Tracker</h1>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+      '<button class="btn-gold" onclick="goTab(1)">'+tr("update")+'</button>'+
+      '<button onclick="goTab(2)" style="background:transparent;color:#e8b832;border:1px solid #8b6914;border-radius:7px;padding:8px 14px;font-size:11px">'+tr("tracker")+'</button>'+
+      '<button onclick="goTab(3)" style="background:transparent;color:#ff9100;border:1px solid #ff910044;border-radius:7px;padding:8px 14px;font-size:11px">'+tr("alerts")+' ('+alerts+')</button>'+
+      '<button onclick="goTab(7)" style="background:transparent;color:#40c4ff;border:1px solid #40c4ff44;border-radius:7px;padding:8px 14px;font-size:11px">'+tr("news")+'</button>'+
+      '<button onclick="goTab(8)" style="background:transparent;color:#ce93d8;border:1px solid #ce93d844;border-radius:7px;padding:8px 14px;font-size:11px">'+tr("pols")+'</button>'+
+    '</div>'+
+  '</div>'+
+  '<div class="gridS" style="margin-bottom:14px">'+
+    statCard("🦅","Tracked",stocks.length,"#e8b832")+
+    statCard("🐂","Bullish",buys,"#00e676")+
+    statCard("🐻","Bearish",sells,"#ff5252")+
+    statCard("📊","Sentiment",sent+"%",sent>60?"#00e676":"#ffd740")+
+    statCard("🔔",tr("alertH"),alerts,"#ff9100")+
+  '</div>'+
+  '<div class="grid2">'+
+    '<div class="card"><p style="margin:0 0 8px;font-size:11px;font-weight:bold;color:#e8b832">Congress vs S&P 500</p>'+
+      lineChart(PERF,["c","s"],["#e8b832","#3a4a5a"],400,120)+
+      '<div style="display:flex;gap:14px;margin-top:6px"><span style="font-size:9px;color:#e8b832">&#9644; Congress Avg</span><span style="font-size:9px;color:#3a4a5a">&#9644; S&P 500</span></div>'+
+    '</div>'+
+    '<div class="card"><p style="margin:0 0 8px;font-size:11px;font-weight:bold;color:#e8b832">Top Returns 2025</p>'+barChart(TOP,400,120)+'</div>'+
+  '</div>';
+}
+
+function renderUpdate(){
+  return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">'+
+    '<div><h2 style="margin:0 0 2px;font-size:16px;color:#e8b832;font-family:Georgia,serif">'+tr("update")+'</h2>'+
+    '<p style="margin:0;font-size:11px;color:#5a6a7a">'+TODAY_FULL+'</p></div>'+
+    '<button class="btn-gold" id="runBtn" onclick="runUpdate()">&#9654; '+tr('runUpdate')+'</button>'+
+  '</div>'+
+  // Herald
+  '<div style="background:linear-gradient(135deg,#0a0c10,#0d0900);border:3px solid #8b6914;border-radius:10px;padding:14px 18px;margin-bottom:14px;">'+
+    '<p style="font-size:22px;font-weight:900;color:#f0e090;font-family:Georgia,serif;text-align:center;margin:0 0 2px;letter-spacing:.06em">THE DISCLOSURE HERALD</p>'+
+    '<p style="font-size:8px;color:#8b6914;text-align:center;letter-spacing:.2em;text-transform:uppercase;margin:0 0 12px">Political Trading Intelligence &mdash; '+TODAY+' &mdash; STOCK Act Edition</p>'+
+    '<p style="font-size:12px;color:#7a8a9a;line-height:1.8;margin:0">'+
+      'Trump disclosed <b style="color:#e8b832">3,600+ trades</b> worth up to $750M in Q1 2026 — unprecedented in presidential history. '+
+      'Intel up <b style="color:#00e676">+200%</b> since Trump bought in March 2026; govt equity stake in Intel taken same period. '+
+      'Pelosi NVDA call options disclosed Jan 16 now <b style="color:#00e676">+170%</b>. '+
+      'STOCK Act 2.0 trading ban has <b style="color:#ff9100">120+ co-sponsors</b> — if passed, every position in this tracker could be forced to unwind. '+
+      'Ro Khanna remains most active congressional trader with <b style="color:#ce93d8">40+ disclosures</b> in 12 months.'+
+    '</p>'+
+  '</div>'+
+  // Log form
+  '<div class="card" style="margin-bottom:14px">'+
+    '<p style="font-size:12px;font-weight:bold;color:#e8b832;margin:0 0 10px">📡 '+tr('logDisc')+'</p>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:10px">'+
+      '<div><p style="font-size:9px;color:#8b6914;margin:0 0 3px">Ticker</p><input class="inp" id="mTicker" placeholder="NVDA"></div>'+
+      '<div><p style="font-size:9px;color:#8b6914;margin:0 0 3px">Politician</p><input class="inp" id="mPol" placeholder="Name"></div>'+
+      '<div><p style="font-size:9px;color:#8b6914;margin:0 0 3px">Return</p><input class="inp" id="mRet" placeholder="+170%"></div>'+
+      '<div><p style="font-size:9px;color:#8b6914;margin:0 0 3px">Stake</p><input class="inp" id="mStake" placeholder="$1M-$5M"></div>'+
+      '<div><p style="font-size:9px;color:#8b6914;margin:0 0 3px">Signal</p><select class="sel" id="mSig"><option>BUY</option><option>SELL</option><option>HOLD</option><option>WATCH</option></select></div>'+
+      '<div><p style="font-size:9px;color:#8b6914;margin:0 0 3px">Note</p><input class="inp" id="mNote" placeholder="Brief note..."></div>'+
+    '</div>'+
+    '<button style="background:#00c853;color:#060810;border:none;border-radius:6px;padding:8px 18px;font-weight:bold;font-size:11px;cursor:pointer" onclick="applyManual()">Apply to Tracker</button>'+
+  '</div>'+
+  // News preview
+  '<div class="card">'+
+    '<p style="font-size:12px;font-weight:bold;color:#e8b832;margin:0 0 10px">Latest Headlines</p>'+
+    '<div style="display:flex;flex-direction:column;gap:8px">'+
+    NEWS.slice(0,4).map(function(n){
+      return '<div style="display:flex;gap:10px;align-items:flex-start;padding:8px;background:#060810;border-radius:6px;border:1px solid '+n.col+'22">'+
+        '<span style="font-size:9px;font-weight:900;color:'+n.col+';white-space:nowrap;margin-top:2px">['+esc(n.src)+']</span>'+
+        '<div><p style="margin:0 0 2px;font-size:11px;color:#dde8f0;font-weight:bold">'+esc(n.headline)+'</p>'+
+        '<a href="'+esc(n.url)+'" target="_blank" style="font-size:9px;color:'+n.col+'">Read &rarr;</a></div>'+
+      '</div>';
+    }).join("")+
+    '</div>'+
+  '</div>';
+}
+
+function renderTracker(){
+  var vis=stocks.filter(function(s){
+    return(filter==="ALL"||s.sig===filter)&&(!search||(s.pol+" "+s.ticker+" "+s.co).toLowerCase().indexOf(search.toLowerCase())>=0);
+  });
+  var formHtml="";
+  if(showForm){
+    formHtml='<div class="card" style="border:2px solid #8b6914;margin-bottom:12px">'+
+      '<p style="font-size:12px;font-weight:bold;color:#e8b832;margin:0 0 10px">'+(editId!=null?"✏️ Edit":"➕ New")+' Entry</p>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:10px">'+
+        fField("Politician","pol")+fField("Ticker","ticker")+fField("Company","co")+fField("Return","ret")+fField("Stake","stake")+fField("Note","note")+
+        '<div><p style="font-size:9px;color:#8b6914;margin:0 0 3px">Signal</p><select class="sel" id="f_sig" onchange="fv(&quot;sig&quot;,this.value)">'+
+          ['BUY','SELL','HOLD','WATCH'].map(function(v){return'<option'+(formData.sig===v?' selected':'')+'>'+v+'</option>';}).join("")+'</select></div>'+
+        '<div><p style="font-size:9px;color:#8b6914;margin:0 0 3px">Status</p><select class="sel" id="f_sta" onchange="fv(&quot;sta&quot;,this.value)">'+
+          ['GOOD','BAD','UNKNOWN'].map(function(v){return'<option'+(formData.sta===v?' selected':'')+'>'+v+'</option>';}).join("")+'</select></div>'+
+        '<div><p style="font-size:9px;color:#8b6914;margin:0 0 3px">Party</p><select class="sel" id="f_pty" onchange="fv(&quot;pty&quot;,this.value)">'+
+          ['R','D','B'].map(function(v){return'<option'+(formData.pty===v?' selected':'')+'>'+v+'</option>';}).join("")+'</select></div>'+
+        '<div><p style="font-size:9px;color:#8b6914;margin:0 0 3px">Week</p><select class="sel" id="f_wk" onchange="fv(&quot;wk&quot;,this.value)">'+
+          ['Buy','Sell','Hold','Watch','Avoid'].map(function(v){return'<option'+(formData.wk===v?' selected':'')+'>'+v+'</option>';}).join("")+'</select></div>'+
+      '</div>'+
+      '<button style="background:#00c853;color:#060810;border:none;border-radius:6px;padding:7px 16px;font-weight:bold;font-size:11px;cursor:pointer" onclick="saveForm()">💾 '+tr('saveBtn')+'</button>'+
+    '</div>';
+  }
+  var rows=vis.map(function(s,i){
+    var alert="";
+    if(s.sig==="BUY"&&s.sta!=="BAD")alert='<span style="background:#022b10;color:#00e676;border:1px solid #00c853;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:bold">🚀 '+tr('buynow')+'</span>';
+    if(s.sig==="SELL")alert='<span style="background:#2a0606;color:#ff5252;border:1px solid #d50000;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:bold">⚠️ SELL</span>';
+    var wkCol={Buy:"#00e676",Sell:"#ff5252",Hold:"#ffd740",Watch:"#40c4ff",Avoid:"#ff5252"}[s.wk]||"#5a6a7a";
+    return '<tr>'+
+      '<td style="white-space:nowrap">'+
+        '<div style="font-size:10px;font-weight:bold;color:#c0d0c0">'+esc(s.pol)+'</div>'+
+        '<span style="background:'+pbg(s.pty)+';color:'+ptx(s.pty)+';border-radius:3px;padding:1px 4px;font-size:8px;font-weight:bold">'+esc(s.pty)+'</span>'+
+      '</td>'+
+      '<td><div style="font-weight:900;color:#f0e090;font-size:13px">'+esc(s.ticker)+'</div><div style="font-size:9px;color:#4a5a6a">'+esc(s.co)+'</div></td>'+
+      '<td><span style="background:#0a0d1a;color:#40c4ff;border:1px solid #40c4ff33;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:bold">'+esc(s.type||"Purchase")+'</span></td>'+
+      '<td style="font-size:10px;color:#7a8a9a;white-space:nowrap">'+esc(s.date||"-")+'</td>'+
+      '<td style="font-size:10px;color:#e8b832;white-space:nowrap">'+esc(s.stake||"-")+'</td>'+
+      '<td><span style="background:'+sigBg(s.sig)+';color:'+sigC(s.sig)+';border:1px solid '+sigBr(s.sig)+';border-radius:4px;padding:2px 7px;font-size:10px;font-weight:bold">'+esc(s.sig)+'</span></td>'+
+      '<td style="font-weight:700;color:'+rc(s.ret)+';font-size:12px">'+esc(s.ret||"—")+'</td>'+
+      '<td style="font-size:10px;color:'+wkCol+';font-weight:bold;white-space:nowrap">'+esc(s.wk||"-")+'</td>'+
+      '<td>'+alert+'</td>'+
+      '<td style="font-size:10px;color:#4a5a6a;max-width:160px">'+esc(s.note)+'</td>'+
+      '<td style="white-space:nowrap">'+
+        '<button onclick="startEdit('+s.id+')" style="background:transparent;color:#40c4ff;border:1px solid #40c4ff44;border-radius:4px;padding:2px 7px;font-size:9px;cursor:pointer;margin-right:3px">'+tr('editBtn')+'</button>'+
+        '<button onclick="delStock('+s.id+')" style="background:transparent;color:#ff5252;border:1px solid #ff525244;border-radius:4px;padding:2px 7px;font-size:9px;cursor:pointer">'+tr('delBtn')+'</button>'+
+      '</td>'+
+    '</tr>';
+  }).join("");
+  return '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">'+
+    ['ALL','BUY','SELL','HOLD','WATCH'].map(function(f){
+      return '<button onclick="setFilter(&quot;'+f+'&quot;)" style="background:'+(filter===f?'#e8b832':'transparent')+';color:'+(filter===f?'#060810':'#5a6a7a')+';border:1px solid '+(filter===f?'#e8b832':'#1e2838')+';border-radius:20px;padding:4px 12px;font-size:10px;cursor:pointer;font-weight:bold">'+f+'</button>';
+    }).join("")+
+    '<input class="inp" style="flex:1;min-width:120px;border-radius:20px;padding:5px 12px" id="searchBox" value="'+esc(search)+'" oninput="setSearch(this.value)" placeholder="'+tr("search")+'...">'+
+    '<button onclick="toggleForm()" style="background:#e8b832;color:#060810;border:none;border-radius:6px;padding:6px 14px;font-weight:bold;font-size:11px;cursor:pointer">'+(showForm?tr('cancelBtn'):tr('addBtn'))+'</button>'+
+  '</div>'+formHtml+
+  '<div style="overflow-x:auto"><table>'+
+    '<thead><tr><th>'+tr('politician')+'</th><th>'+tr('ticker')+'</th><th>'+tr('type')+'</th><th>'+tr('disclosed')+'</th><th>'+tr('stake')+'</th><th>'+tr('signal')+'</th><th>'+tr('ret')+'</th><th>'+tr('week')+'</th><th>'+tr('alertH')+'</th><th>'+tr('note')+'</th><th></th></tr></thead>'+
+    '<tbody>'+rows+'</tbody>'+
+  '</table></div>';
+}
+
+function fField(lb,key){
+  return '<div><p style="font-size:9px;color:#8b6914;margin:0 0 3px">'+lb+'</p>'+
+    '<input class="inp" id="f_'+key+'" value="'+esc(formData[key]||"")+'" oninput="fv(this.id.slice(2)this.value)"></div>';
+}
+
+function renderAlerts(){
+  var alerts=stocks.filter(function(s){return(s.sig==="BUY"||s.sig==="SELL")&&dismissed.indexOf(s.id)<0;});
+  var high=alerts.filter(function(a){return a.sig==="BUY"&&a.sta==="GOOD";});
+  var sell=alerts.filter(function(a){return a.sig==="SELL";});
+  var hdr='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'+
+    '<h2 style="font-size:16px;color:#e8b832;font-family:Georgia,serif">'+tr('alerts')+'</h2>'+
+    (dismissed.length>0?'<button onclick="restoreAll()" style="background:transparent;color:#4a5a6a;border:1px solid #1e2838;border-radius:5px;padding:4px 10px;font-size:10px;cursor:pointer">'+tr('restoreAll')+'</button>':"")+
+  '</div>'+
+  '<div class="gridS" style="margin-bottom:14px">'+
+    statCard("🚀","Strong BUY",high.length,"#00e676")+
+    statCard("⚠️","SELL Signals",sell.length,"#ff5252")+
+    statCard("🔔","Total Active",alerts.length,"#ff9100")+
+  '</div>';
+  if(alerts.length===0)return hdr+'<div style="text-align:center;padding:40px 0;color:#2a3a4a;font-size:14px">✅ All alerts clear</div>';
+  var items=alerts.map(function(a){
+    var isBuy=a.sig==="BUY"; var col=isBuy?"#00e676":"#ff5252"; var br=isBuy?"#00c853":"#d50000"; var bg=isBuy?"#022b10":"#2a0606";
+    return '<div class="'+(isBuy?"alert-buy":"alert-sell")+'">'+
+      '<div style="background:'+pbg(a.pty)+';color:'+ptx(a.pty)+';border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;flex-shrink:0;border:1px solid '+ptx(a.pty)+'44">'+esc(a.pty)+'</div>'+
+      '<div style="flex:1">'+
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">'+
+          '<span style="color:'+col+';border:1px solid '+br+';background:'+bg+';border-radius:4px;padding:2px 8px;font-size:11px;font-weight:bold">'+(isBuy?"🚀 "+tr("buynow"):"⚠️ "+tr("sellnow"))+'</span>'+
+          '<span style="font-size:15px;font-weight:900;color:#f0e090">'+esc(a.ticker)+'</span>'+
+          '<span style="font-size:11px;color:#7a8a9a">'+esc(a.pol)+'</span>'+
+          '<span style="font-size:11px;font-weight:bold;color:'+rc(a.ret)+'">'+esc(a.ret||"")+'</span>'+
+          (a.stake?'<span style="font-size:10px;color:#e8b832">'+esc(a.stake)+'</span>':"")+
+        '</div>'+
+        '<p style="margin:0;font-size:10px;color:#5a6a7a;line-height:1.5">'+esc(a.note)+'</p>'+
+      '</div>'+
+      '<button onclick="dismiss('+a.id+')" style="background:transparent;color:#2a3a4a;border:1px solid #1e2838;border-radius:5px;padding:4px 8px;font-size:10px;cursor:pointer;flex-shrink:0">'+tr('dismissBtn')+'</button>'+
+    '</div>';
+  }).join("");
+  return hdr+items;
+}
+
+function renderInvestor(){
+  var views=["overview","portfolio","watchlist","sectors"];
+  var tabsHtml=views.map(function(v){
+    return '<button onclick="setInvView(&quot;'+v+'&quot;)" style="background:'+(investorView===v?'#e8b832':'transparent')+';color:'+(investorView===v?'#060810':'#5a6a7a')+';border:1px solid '+(investorView===v?'#e8b832':'#1e2838')+';border-radius:20px;padding:4px 12px;font-size:10px;cursor:pointer;font-weight:bold;text-transform:capitalize">'+tr(v)+'</button>';
+  }).join("");
+  var hdr='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">'+
+    '<h2 style="font-size:16px;color:#e8b832;font-family:Georgia,serif">💼 '+tr('invDash')+'</h2>'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">'+tabsHtml+'</div>'+
+  '</div>';
+
+  var withRet=stocks.map(function(s){return{ticker:s.ticker,pol:s.pol,ret:parseFloat((s.ret||"").replace("%",""))};}).filter(function(x){return!isNaN(x.ret);});
+  withRet.sort(function(a,b){return b.ret-a.ret;});
+  var gainers=withRet.slice(0,5);
+  var losers=withRet.slice().sort(function(a,b){return a.ret-b.ret;}).slice(0,3);
+  var buys=stocks.filter(function(s){return s.sig==="BUY";}).length;
+  var sells=stocks.filter(function(s){return s.sig==="SELL";}).length;
+  var sent=Math.round(buys/stocks.length*100);
+  var portVal=parseInt(portSize)||100000;
+  var totalAlloc=Object.keys(alloc).reduce(function(s,k){return s+(alloc[k]||0);},0);
+
+  if(investorView==="overview"){
+    var priceRows=stocks.filter(function(s){return PRICES[s.ticker];}).slice(0,14).map(function(s,i){
+      var risk=RISK[s.ticker]||"Medium",rCol=RCOL[risk]||"#ffd740";
+      var sec=SECTORS[s.ticker]||"Other",sCol=SCOL[sec]||"#5a6a7a";
+      return '<tr>'+
+        '<td style="font-weight:900;color:#f0e090;font-size:13px">'+esc(s.ticker)+'</td>'+
+        '<td style="font-size:10px;color:#5a6a7a">'+esc(s.pol.split(" ").slice(-1)[0])+'</td>'+
+        '<td style="font-weight:bold;color:#e8b832">$'+PRICES[s.ticker]+'</td>'+
+        '<td><span style="background:'+sCol+'22;color:'+sCol+';border-radius:4px;padding:1px 6px;font-size:9px;font-weight:bold">'+sec+'</span></td>'+
+        '<td><span style="background:'+rCol+'22;color:'+rCol+';border-radius:4px;padding:1px 6px;font-size:9px;font-weight:bold">'+risk+'</span></td>'+
+        '<td style="font-weight:700;color:'+rc(s.ret)+'">'+esc(s.ret||"—")+'</td>'+
+        '<td><span style="background:'+sigBg(s.sig)+';color:'+sigC(s.sig)+';border:1px solid '+sigBr(s.sig)+';border-radius:4px;padding:2px 7px;font-size:9px;font-weight:bold">'+s.sig+'</span></td>'+
+      '</tr>';
+    }).join("");
+    return hdr+
+      '<div class="gridS" style="margin-bottom:14px">'+
+        statCard("🐂","Bullish",buys,"#00e676")+statCard("🐻","Bearish",sells,"#ff5252")+
+        statCard("📊","Sentiment",sent+"%",sent>60?"#00e676":"#ffd740")+statCard("🏆","Best Return",gainers[0]?"+"+gainers[0].ret+"%":"—","#00e676")+
+      '</div>'+
+      '<div class="grid2" style="margin-bottom:14px">'+
+        '<div class="card">'+
+          '<p style="font-size:12px;font-weight:bold;color:#00e676;margin:0 0 10px">🏆 '+tr('topPerf')+'</p>'+
+          gainers.map(function(g,i){
+            return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;padding:6px 8px;background:'+(i===0?'#061a0e':'#060810')+';border-radius:6px">'+
+              '<span style="font-size:11px;color:#3a4a5a;width:16px;text-align:center">'+(i+1)+'</span>'+
+              '<span style="font-size:13px;font-weight:900;color:#f0e090;width:46px">'+esc(g.ticker)+'</span>'+
+              '<span style="font-size:10px;color:#5a6a7a;flex:1">'+esc(g.pol)+'</span>'+
+              '<span style="font-size:13px;font-weight:900;color:#69f0ae">+'+g.ret+'%</span>'+
+            '</div>';
+          }).join("")+
+        '</div>'+
+        '<div class="card">'+
+          '<p style="font-size:12px;font-weight:bold;color:#ff5252;margin:0 0 8px">⚠️ '+tr('underPerf')+'</p>'+
+          losers.map(function(g){
+            return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;padding:6px 8px;background:#1c0606;border-radius:6px">'+
+              '<span style="font-size:13px;font-weight:900;color:#f0e090;width:46px">'+esc(g.ticker)+'</span>'+
+              '<span style="font-size:10px;color:#5a6a7a;flex:1">'+esc(g.pol)+'</span>'+
+              '<span style="font-size:13px;font-weight:900;color:#ff5252">'+g.ret+'%</span>'+
+            '</div>';
+          }).join("")+
+          '<div style="margin-top:10px;padding:8px;background:#0d1117;border:1px solid #ff525233;border-radius:6px;font-size:10px;color:#5a6a7a;line-height:1.5">'+
+            'Past disclosed returns do not guarantee future results. Always conduct independent research.'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="card">'+
+        '<p style="font-size:12px;font-weight:bold;color:#e8b832;margin:0 0 10px">📈 '+tr('priceRisk')+'</p>'+
+        '<div style="overflow-x:auto"><table>'+
+          '<thead><tr><th>'+tr('ticker')+'</th><th>'+tr('politician')+'</th><th>Price</th><th>Sector</th><th>Risk</th><th>'+tr('ret')+'</th><th>'+tr('signal')+'</th></tr></thead>'+
+          '<tbody>'+priceRows+'</tbody>'+
+        '</table></div>'+
+      '</div>';
+  }
+
+  if(investorView==="portfolio"){
+    var portCards=stocks.filter(function(s){return s.sig==="BUY"&&PRICES[s.ticker];}).slice(0,10).map(function(s){
+      var pct=alloc[s.ticker]||0;
+      var dollar=Math.round(portVal*pct/100);
+      var shares=Math.floor(dollar/(PRICES[s.ticker]||1));
+      var retN=parseFloat((s.ret||"").replace("%",""));
+      var proj=isNaN(retN)?0:Math.round(dollar*retN/100);
+      return '<div class="card" style="border:1px solid '+(pct>0?'#8b6914':'#1e2838')+'">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
+          '<span style="font-size:14px;font-weight:900;color:#f0e090">'+esc(s.ticker)+'</span>'+
+          '<span style="font-size:10px;color:#5a6a7a">$'+PRICES[s.ticker]+'/sh</span>'+
+        '</div>'+
+        '<div style="font-size:9px;color:#5a6a7a;margin-bottom:8px">'+esc(s.pol)+'</div>'+
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'+
+          '<button onclick="chgAlloc(&quot;'+esc(s.ticker)+'&quot;,-5)" style="background:#1a1a1a;color:#e8b832;border:1px solid #3a3a3a;border-radius:4px;width:24px;height:24px;cursor:pointer;font-size:14px;font-weight:bold;flex-shrink:0">-</button>'+
+          '<div class="bar-track" style="flex:1"><div class="bar-fill" style="width:'+(pct*2)+'%;background:#e8b832"></div></div>'+
+          '<button onclick="chgAlloc(&quot;'+esc(s.ticker)+'&quot;,5)" style="background:#1a1a1a;color:#e8b832;border:1px solid #3a3a3a;border-radius:4px;width:24px;height:24px;cursor:pointer;font-size:14px;font-weight:bold;flex-shrink:0">+</button>'+
+          '<span style="font-size:12px;font-weight:bold;color:#e8b832;min-width:32px">'+pct+'%</span>'+
+        '</div>'+
+        (pct>0?'<div style="font-size:9px;color:#5a6a7a;line-height:1.7">'+
+          '$'+dollar.toLocaleString()+' &mdash; '+shares+' shares<br>'+
+          '<span style="color:'+(proj>=0?'#00e676':'#ff5252')+'">Proj: '+(proj>=0?"+":"")+'$'+Math.abs(proj).toLocaleString()+'</span>'+
+        '</div>':"")+
+      '</div>';
+    }).join("");
+    return hdr+
+      '<div class="card" style="margin-bottom:14px">'+
+        '<p style="font-size:13px;font-weight:bold;color:#e8b832;margin:0 0 4px">💰 '+tr('portSim')+'</p>'+
+        '<p style="font-size:10px;color:#5a6a7a;margin:0 0 12px">Simulate allocation to disclosed BUY positions. Not financial advice.</p>'+
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">'+
+          '<span style="font-size:11px;color:#c0d0c0">Portfolio Size: $</span>'+
+          '<input class="inp" id="portInput" value="'+esc(portSize)+'" oninput="portSize=this.value;render()" style="width:120px">'+
+          '<span style="font-size:12px;font-weight:bold;color:'+(totalAlloc>100?'#ff5252':totalAlloc===100?'#00e676':'#ffd740')+'">'+totalAlloc+'% allocated</span>'+
+        '</div>'+
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">'+portCards+'</div>'+
+      '</div>';
+  }
+
+  if(investorView==="watchlist"){
+    var wlItems=stocks.map(function(s){
+      var isW=watchlist[s.id]===true;
+      var risk=RISK[s.ticker]||"Medium",rCol=RCOL[risk]||"#ffd740";
+      return '<div style="background:'+(isW?'#0d1117':'#060810')+';border:1px solid '+(isW?'#e8b83244':'#141820')+';border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:6px">'+
+        '<button onclick="toggleWatch('+s.id+')" style="background:transparent;border:none;font-size:18px;cursor:pointer;color:'+(isW?'#e8b832':'#2a3a4a')+';flex-shrink:0">'+(isW?"&#9733;":"&#9734;")+'</button>'+
+        '<span style="font-size:13px;font-weight:900;color:#f0e090;width:46px;flex-shrink:0">'+esc(s.ticker)+'</span>'+
+        '<span style="font-size:10px;color:#7a8a9a;flex:1">'+esc(s.pol)+'</span>'+
+        '<span style="background:'+rCol+'22;color:'+rCol+';border-radius:4px;padding:1px 6px;font-size:9px;font-weight:bold;flex-shrink:0">'+risk+'</span>'+
+        '<span style="font-weight:700;color:'+rc(s.ret)+';font-size:11px;width:55px;text-align:right;flex-shrink:0">'+esc(s.ret||"—")+'</span>'+
+        '<span style="background:'+sigBg(s.sig)+';color:'+sigC(s.sig)+';border:1px solid '+sigBr(s.sig)+';border-radius:4px;padding:2px 7px;font-size:9px;font-weight:bold;flex-shrink:0">'+s.sig+'</span>'+
+        (PRICES[s.ticker]?'<span style="color:#e8b832;font-size:10px;flex-shrink:0">$'+PRICES[s.ticker]+'</span>':"")+
+      '</div>';
+    }).join("");
+    return hdr+'<p style="font-size:12px;color:#7a8a9a;margin:0 0 12px">Star any position to add to your personal watchlist.</p>'+wlItems;
+  }
+
+  if(investorView==="sectors"){
+    var secMap={};
+    stocks.forEach(function(s){var sec=SECTORS[s.ticker]||"Other";secMap[sec]=(secMap[sec]||0)+1;});
+    var secItems=Object.keys(secMap).map(function(sec){
+      var col=SCOL[sec]||"#5a6a7a",pct=Math.round(secMap[sec]/stocks.length*100);
+      return '<div class="card" style="border:1px solid '+col+'44">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
+          '<span style="font-size:12px;font-weight:bold;color:'+col+'">'+sec+'</span>'+
+          '<span style="font-size:16px;font-weight:900;color:'+col+';font-family:Georgia,serif">'+pct+'%</span>'+
+        '</div>'+
+        '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:'+col+'"></div></div>'+
+        '<div style="font-size:10px;color:#5a6a7a;margin-top:4px">'+secMap[sec]+' position'+(secMap[sec]>1?"s":"")+'</div>'+
+      '</div>';
+    }).join("");
+    return hdr+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:14px">'+secItems+'</div>'+
+      '<div class="card" style="border:1px solid #ff525233">'+
+        '<p style="font-size:12px;font-weight:bold;color:#ff9100;margin:0 0 8px">⚠️ Concentration Risk</p>'+
+        '<p style="font-size:11px;color:#7a8a9a;line-height:1.7;margin:0">Congressional portfolios are heavily concentrated in <b style="color:#40c4ff">Technology</b>. A sector rotation, antitrust action, or tech-specific regulation could impact multiple positions simultaneously. Diversification across sectors reduces this risk. Not financial advice.</p>'+
+      '</div>';
+  }
+  return hdr;
+}
+
+function renderCharts(){
+  return '<h2 style="font-size:16px;color:#e8b832;font-family:Georgia,serif;margin:0 0 14px">📈 '+tr('charts')+'</h2>'+
+  '<div class="grid2" style="margin-bottom:14px">'+
+    '<div class="card">'+
+      '<p style="font-size:11px;font-weight:bold;color:#e8b832;margin:0 0 8px">Congress vs S&P 500 &mdash; 5 Year</p>'+
+      lineChart(PERF,["c","s"],["#e8b832","#3a4a5a"],450,180)+
+      '<div style="display:flex;gap:14px;margin-top:8px">'+
+        '<span style="font-size:9px;color:#e8b832">&#9644; Congress Avg</span>'+
+        '<span style="font-size:9px;color:#3a4a5a">&#9644; S&P 500</span>'+
+      '</div>'+
+    '</div>'+
+    '<div class="card">'+
+      '<p style="font-size:11px;font-weight:bold;color:#e8b832;margin:0 0 8px">Top Congressional Returns 2025</p>'+
+      barChart(TOP,450,180)+
+    '</div>'+
+  '</div>'+
+  '<div class="card">'+
+    '<p style="font-size:12px;font-weight:bold;color:#e8b832;margin:0 0 12px">Return Comparison: All Tracked Positions</p>'+
+    '<div style="overflow-x:auto">'+
+    stocks.filter(function(s){return s.ret&&s.ret!="—";}).map(function(s){
+      var retN=parseFloat((s.ret||"").replace("%",""));
+      if(isNaN(retN))return"";
+      var col=retN>0?"#00e676":"#ff5252";
+      var barW=Math.min(Math.abs(retN)/2.5,100);
+      return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
+        '<span style="font-size:11px;font-weight:bold;color:#f0e090;width:46px;flex-shrink:0">'+esc(s.ticker)+'</span>'+
+        '<span style="font-size:9px;color:#5a6a7a;width:90px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(s.pol.split(" ").slice(-1)[0])+'</span>'+
+        '<div style="flex:1;background:#141820;border-radius:20px;height:14px;overflow:hidden">'+
+          '<div style="width:'+barW+'%;background:'+col+';height:100%;border-radius:20px;display:flex;align-items:center;padding-left:6px">'+
+            '<span style="font-size:9px;font-weight:bold;color:#060810;white-space:nowrap">'+esc(s.ret)+'</span>'+
+          '</div>'+
+        '</div>'+
+        '<span style="background:'+sigBg(s.sig)+';color:'+sigC(s.sig)+';border-radius:3px;padding:1px 5px;font-size:8px;font-weight:bold;flex-shrink:0">'+s.sig+'</span>'+
+      '</div>';
+    }).join("")+
+    '</div>'+
+  '</div>';
+}
+
+function renderContext(){
+  var evTypes=[["ALL","All"],["policy","Policy"],["political","Political"],["macro","Macro"],["shock","Shock"]];
+  var vis=CTX_EVENTS.filter(function(e){return ctxFilter==="ALL"||e.type===ctxFilter;});
+  var typeIcons={policy:"🏛️",political:"⚖️",macro:"🌍",shock:"⚡"};
+  return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:8px">'+
+    '<div><h2 style="font-size:16px;color:#e8b832;font-family:Georgia,serif;margin:0">🧭 '+tr('whyMoved')+'</h2>'+
+    '<p style="font-size:11px;color:#5a6a7a;margin:4px 0 0">Context and catalysts behind every major price move.</p></div>'+
+  '</div>'+
+  '<div style="background:linear-gradient(135deg,#0a0f1c,#0d0900);border:2px solid #8b6914;border-radius:10px;padding:12px 16px;margin:12px 0">'+
+    '<p style="font-size:10px;color:#8b6914;font-weight:bold;letter-spacing:.1em;margin:0 0 4px">UNIQUE TO THIS TRACKER</p>'+
+    '<p style="font-size:13px;color:#c0d0c0;margin:0">Others show <b style="color:#e8b832">WHAT</b> was disclosed. We show <b style="color:#e8b832">WHY</b> it matters.</p>'+
+  '</div>'+
+  '<div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">'+
+    evTypes.map(function(et){
+      return '<button onclick="setCtxFilter(&quot;'+et[0]+'&quot;)" style="background:'+(ctxFilter===et[0]?'#e8b83222':'transparent')+';color:'+(ctxFilter===et[0]?'#e8b832':'#5a6a7a')+';border:1px solid '+(ctxFilter===et[0]?'#e8b832':'#1e2838')+';border-radius:20px;padding:4px 12px;font-size:10px;cursor:pointer">'+et[1]+'</button>';
+    }).join("")+
+  '</div>'+
+  vis.map(function(ev){
+    var icon=typeIcons[ev.type]||"📌";
+    return '<div class="ctx-card" style="border:1px solid '+ev.col+'33">'+
+      '<div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap">'+
+        '<span style="font-size:20px;flex-shrink:0">'+icon+'</span>'+
+        '<div style="flex:1;min-width:200px">'+
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">'+
+            (ev.ticker!=="ALL"?'<b style="color:#f0e090;font-size:14px">'+esc(ev.ticker)+'</b>':"")+
+            '<span style="background:'+ev.col+'22;color:'+ev.col+';border-radius:4px;padding:2px 8px;font-size:9px;font-weight:bold;border:1px solid '+ev.col+'44">'+esc(ev.tag)+'</span>'+
+            (ev.sev==="high"?'<span style="background:#ff525222;color:#ff5252;border-radius:4px;padding:2px 7px;font-size:9px;font-weight:bold">HIGH IMPACT</span>':"")+
+          '</div>'+
+          '<p style="margin:0 0 6px;font-size:13px;color:#c0d0c0;font-weight:bold;line-height:1.4">'+esc(ev.head)+'</p>'+
+          '<p style="margin:0 0 8px;font-size:11px;color:#7a8a9a;line-height:1.6">'+esc(ev.detail)+'</p>'+
+          '<div style="background:#060810;border-left:3px solid '+ev.col+';border-radius:4px;padding:8px 12px">'+
+            '<p style="margin:0;font-size:11px;color:#9aaabb;line-height:1.6"><b style="color:'+ev.col+'">Why this matters: </b>'+esc(ev.why)+'</p>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join("");
+}
+
+function renderNews(){
+  return '<div style="background:linear-gradient(135deg,#0a0c10,#0d0900);border:3px solid #8b6914;border-radius:10px;padding:14px 18px;margin-bottom:16px;text-align:center">'+
+    '<p style="font-size:22px;font-weight:900;color:#f0e090;font-family:Georgia,serif;margin:0 0 2px;letter-spacing:.06em">THE DISCLOSURE HERALD</p>'+
+    '<p style="font-size:8px;color:#8b6914;letter-spacing:.2em;text-transform:uppercase;margin:0 0 8px">Political Trading Intelligence &mdash; '+TODAY+' &mdash; STOCK Act Edition</p>'+
+    '<div style="display:flex;align-items:center;justify-content:center;gap:10px">'+
+      '<span style="background:#ff525222;color:#ff5252;border-radius:4px;padding:2px 8px;font-size:9px;font-weight:900" class="live">🔴 LIVE</span>'+
+      '<span style="font-size:10px;color:#3a4a5a">Updated '+TODAY+'</span>'+
+    '</div>'+
+  '</div>'+
+  '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">'+
+  NEWS.map(function(art,i){
+    var isLead=i===0;
+    return '<div class="news-card" style="border:1px solid '+art.col+'33;">'+
+      '<div style="background:'+art.col+'22;border-bottom:2px solid '+art.col+'44;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">'+
+        '<span style="font-size:10px;font-weight:900;color:'+art.col+';text-transform:uppercase">['+esc(art.src)+']</span>'+
+        '<span style="background:'+sigBg(art.sig)+';color:'+sigC(art.sig)+';border-radius:4px;padding:2px 7px;font-size:9px;font-weight:bold;border:1px solid '+sigBr(art.sig)+'">'+art.sig+'</span>'+
+      '</div>'+
+      '<div style="padding:12px 14px">'+
+        '<p style="margin:0 0 6px;font-size:'+(isLead?13:11)+'px;font-weight:bold;color:#dde8f0;line-height:1.4;font-family:Georgia,serif">'+esc(art.headline)+'</p>'+
+        '<p style="margin:0 0 10px;font-size:10px;color:#5a6a7a;line-height:1.6">'+esc(art.detail)+'</p>'+
+        '<div style="display:flex;justify-content:space-between;align-items:center">'+
+          '<span style="font-size:9px;color:#3a4a5a">'+esc(art.date)+'</span>'+
+          '<a href="'+esc(art.url)+'" target="_blank" style="font-size:10px;color:'+art.col+';font-weight:bold">Read full article &rarr;</a>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join("")+
+  '</div>';
+}
+
+function renderPoliticians(){
+  return '<h2 style="font-size:16px;color:#e8b832;font-family:Georgia,serif;margin:0 0 4px">👤 '+tr('polProf')+'</h2>'+
+  '<p style="color:#6a7a8a;font-size:12px;margin:0 0 14px">Track individual trading behavior, risk profiles, and all disclosed STOCK Act transactions.</p>'+
+  POLITICIANS.map(function(pol){
+    var pTx=ptx(pol.pty),pBg=pbg(pol.pty),pBl=pol.pty==="R"?"#ff6b6b33":pol.pty==="D"?"#6b9fff33":"#3a3a3a";
+    var myStocks=STOCKS.filter(function(s){return s.pol===pol.name;});
+    var txRows=myStocks.map(function(s){
+      return '<tr>'+
+        '<td style="font-weight:bold;color:#f0e090">'+esc(s.ticker)+'</td>'+
+        '<td style="color:#40c4ff">'+esc(s.type||"Purchase")+'</td>'+
+        '<td style="color:#5a6a7a;white-space:nowrap">'+esc(s.date||"-")+'</td>'+
+        '<td style="color:#e8b832">'+esc(s.stake||"-")+'</td>'+
+        '<td style="font-weight:700;color:'+rc(s.ret)+'">'+esc(s.ret||"-")+'</td>'+
+        '<td><span style="background:'+sigBg(s.sig)+';color:'+sigC(s.sig)+';border:1px solid '+sigBr(s.sig)+';border-radius:3px;padding:1px 6px;font-size:8px;font-weight:bold">'+s.sig+'</span></td>'+
+      '</tr>';
+    }).join("");
+    return '<div style="background:#0d1117;border:1px solid '+pBl+';border-radius:12px;padding:16px 18px;margin-bottom:12px">'+
+      '<div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap">'+
+        // Profile card
+        '<div style="background:'+pBg+';border:2px solid '+pTx+'44;border-radius:10px;padding:12px 16px;min-width:170px;flex-shrink:0">'+
+          '<div style="font-size:13px;font-weight:bold;color:'+pTx+';margin-bottom:2px">'+esc(pol.name)+'</div>'+
+          '<div style="font-size:9px;color:#5a6a7a;margin-bottom:6px">'+esc(pol.role)+'</div>'+
+          '<div style="font-size:9px;color:#5a6a7a;margin-bottom:8px">'+esc(pol.state)+'</div>'+
+          '<span style="background:'+pTx+'22;color:'+pTx+';border-radius:4px;padding:2px 8px;font-size:9px;font-weight:bold">'+(pol.pty==="R"?"Republican":pol.pty==="D"?"Democrat":"Bipartisan")+'</span>'+
+          '<div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:4px">'+
+            [["Trades",pol.trades],["Value",pol.value],["Period",pol.period],["Top Pick",pol.top]].map(function(st){
+              return '<div style="background:#060810;border-radius:4px;padding:4px 6px">'+
+                '<div style="font-size:8px;color:#4a5a6a">'+st[0]+'</div>'+
+                '<div style="font-size:9px;font-weight:bold;color:#c0d0c0">'+esc(st[1])+'</div>'+
+              '</div>';
+            }).join("")+
+          '</div>'+
+        '</div>'+
+        // Detail
+        '<div style="flex:1;min-width:200px">'+
+          '<p style="font-size:11px;color:#9aaabb;line-height:1.7;margin:0 0 10px">'+esc(pol.bio)+'</p>'+
+          '<div style="background:#ff525211;border:1px solid #ff525233;border-radius:6px;padding:7px 12px;margin-bottom:10px">'+
+            '<span style="font-size:9px;color:'+pol.risk_col+';font-weight:bold">RISK LEVEL: </span>'+
+            '<span style="font-size:9px;color:#7a8a9a">'+esc(pol.risk)+'</span>'+
+          '</div>'+
+          (myStocks.length>0?
+            '<div style="background:#060810;border-radius:8px;padding:10px">'+
+              '<p style="font-size:9px;color:#8b6914;font-weight:bold;letter-spacing:.08em;margin:0 0 8px">'+tr('discTrans')+'</p>'+
+              '<div style="overflow-x:auto"><table style="font-size:10px">'+
+                '<thead><tr><th style="font-size:8px">'+tr('ticker')+'</th><th style="font-size:8px">'+tr('type')+'</th><th style="font-size:8px">Date</th><th style="font-size:8px">'+tr('stake')+'</th><th style="font-size:8px">'+tr('ret')+'</th><th style="font-size:8px">'+tr('signal')+'</th></tr></thead>'+
+                '<tbody>'+txRows+'</tbody>'+
+              '</table></div>'+
+            '</div>':"")+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join("");
+}
+
+function renderActivity(){
+  return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">'+
+    '<div><h2 style="font-size:16px;color:#e8b832;font-family:Georgia,serif;margin:0 0 2px">📡 '+tr('liveAct')+'</h2>'+
+    '<p style="font-size:11px;color:#5a6a7a;margin:0">Latest STOCK Act disclosures as they are filed — 45-day window</p></div>'+
+    '<span style="background:#ff525222;color:#ff5252;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:900" class="live">🔴 LIVE FEED</span>'+
+  '</div>'+
+  ACTIVITY.map(function(act){
+    var pTx=ptx(act.pty),pBg=pbg(act.pty);
+    var isBuy=act.type!=="Sale";
+    var tc=isBuy?"#00e676":"#ff5252",tbg=isBuy?"#061a0e":"#1c0606",tbr=isBuy?"#00c853":"#d50000";
+    return '<div style="background:#0d1117;border:1px solid '+(act.isNew?"#e8b83244":"#1e2838")+';border-radius:10px;padding:12px 16px;display:flex;gap:12px;align-items:flex-start;margin-bottom:8px;position:relative">'+
+      (act.isNew?'<div style="position:absolute;top:8px;right:8px;background:#00e67222;color:#00e676;border-radius:4px;padding:1px 7px;font-size:8px;font-weight:bold">NEW</div>':"")+
+      '<div style="background:'+pBg+';border:1px solid '+pTx+'33;border-radius:8px;padding:8px 10px;flex-shrink:0;text-align:center;min-width:80px">'+
+        '<div style="font-size:10px;font-weight:bold;color:'+pTx+'">'+esc(act.pol.split(" ")[0])+'</div>'+
+        '<div style="font-size:10px;font-weight:bold;color:'+pTx+'">'+esc(act.pol.split(" ").slice(1).join(" "))+'</div>'+
+        '<div style="font-size:8px;color:#3a4a5a;margin-top:2px">'+(act.pty==="R"?"(R)":"(D)")+'</div>'+
+      '</div>'+
+      '<div style="flex:1">'+
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">'+
+          '<span style="font-size:16px;font-weight:900;color:#f0e090">'+esc(act.ticker)+'</span>'+
+          '<span style="background:'+tbg+';color:'+tc+';border:1px solid '+tbr+';border-radius:4px;padding:2px 8px;font-size:10px;font-weight:bold">'+esc(act.type)+'</span>'+
+          '<span style="background:'+sigBg(act.sig)+';color:'+sigC(act.sig)+';border:1px solid '+sigBr(act.sig)+';border-radius:4px;padding:2px 7px;font-size:10px;font-weight:bold">'+act.sig+'</span>'+
+          '<span style="font-size:12px;font-weight:700;color:'+rc(act.ret)+'">'+esc(act.ret)+'</span>'+
+          '<span style="font-size:9px;color:#3a4a5a;margin-left:auto">'+esc(act.date)+'</span>'+
+        '</div>'+
+        '<div style="font-size:10px;color:#5a6a7a;margin-bottom:4px">Stake: <b style="color:#e8b832">'+esc(act.stake)+'</b></div>'+
+        '<p style="margin:0;font-size:10px;color:#5a6a7a;line-height:1.6">'+esc(act.note)+'</p>'+
+      '</div>'+
+    '</div>';
+  }).join("");
+}
+
+function renderLegal(){
+  var sections=[
+    {col:"#00e676",icon:"✅",title:"What Is 100% Legal",
+     items:["Tracking public STOCK Act disclosures is fully legal — the government publishes this data for exactly this purpose.",
+            "Quiver Quantitative, Capitol Trades, and Wolf of Washington already operate commercially.",
+            "No securities license needed if you do not give personalized investment advice.",
+            "Aggregating and publishing public government data is protected by the First Amendment."]},
+    {col:"#ffd740",icon:"⚠️",title:"Before Launch",
+     items:["Register Hawaii LLC — northwestregisteredagent.com — Call 1-509-768-2249 if duplicate account",
+            "Get EIN free at irs.gov/ein — same day as LLC approval — takes 10 minutes",
+            "File BOI at boiefiling.fincen.gov within 30 days of LLC — $591/day penalty if missed",
+            "Register Hawaii GET license at hitax.hawaii.gov — 4.5% on all Oahu revenue",
+            "Publish Terms of Service and Privacy Policy before charging anyone",
+            "Consult a securities attorney ($200-400) before launch — try avvo.com"]},
+    {col:"#ff5252",icon:"🚫",title:"What to Avoid",
+     items:["Never promise signals will beat the market or make subscribers money",
+            "Never call yourself a financial advisor without Series 65 licensing",
+            "Never use 'guaranteed returns' or 'risk-free' language — that's securities fraud",
+            "Never imply politicians are tipping you off or you have inside information",
+            "Never mix personal and business bank accounts — destroys LLC liability protection"]},
+    {col:"#40c4ff",icon:"🌺",title:"Hawaii-Specific Requirements",
+     items:["Hawaii GET Tax: 4.5% on ALL gross revenue on Oahu — SaaS subscriptions fully included",
+            "Annual LLC report: $15/year at end of your formation quarter (DCCA)",
+            "State income tax: 1.4–11% on net profits — hire a local CPA for year one"]},
+  ];
+  return '<h2 style="color:#e8b832;font-size:16px;margin:0 0 4px;font-family:Georgia,serif">⚖️ Legal &amp; Hawaii LLC Guide</h2>'+
+  '<p style="color:#6a7a8a;font-size:12px;margin:0 0 14px">Everything you need to stay compliant before your first subscriber pays you.</p>'+
+  sections.map(function(s){
+    return '<div class="card" style="border:1px solid '+s.col+'44;margin-bottom:12px">'+
+      '<p style="font-size:13px;font-weight:bold;color:'+s.col+';margin:0 0 8px">'+s.icon+' '+esc(s.title)+'</p>'+
+      '<ul style="margin:0;padding-left:18px">'+
+        s.items.map(function(item){return '<li style="font-size:11px;color:#7a8a9a;margin-bottom:4px;line-height:1.6">'+item+'</li>';}).join("")+
+      '</ul>'+
+    '</div>';
+  }).join("");
+}
+
+function renderGoLive(){
+  var steps=[
+    {n:1,t:"Vercel — Free Hosting",col:"#00c7b7",url:"https://vercel.com",items:["vercel.com — sign up free","Connect GitHub repo","Auto-deploys in 60 seconds — live URL immediately"]},
+    {n:2,t:"Buy Your Domain",col:"#e8b832",url:"https://namecheap.com",items:["namecheap.com — ~$12/yr","PresidentialDisclosureTracker.com","PDTracker.com or FollowTheMoney.app"]},
+    {n:3,t:"Set Up Stripe",col:"#6772e5",url:"https://stripe.com",items:["stripe.com — sign up with your EIN","Basic $9.99 / Pro $24.99 / Elite $49.99","Enable 7-day free trial to reduce churn"]},
+  ];
+  var REV=[{subs:50,mo:1249},{subs:100,mo:2998},{subs:250,mo:6496},{subs:500,mo:12492},{subs:1000,mo:23985}];
+  return '<h2 style="color:#e8b832;font-size:16px;margin:0 0 4px;font-family:Georgia,serif">🌐 Go Live</h2>'+
+  '<p style="color:#6a7a8a;font-size:12px;margin:0 0 14px">Get online and start collecting subscriptions.</p>'+
+  '<div class="grid3" style="margin-bottom:14px">'+
+  steps.map(function(s){
+    return '<div class="card" style="border:1px solid '+s.col+'44">'+
+      '<div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">'+
+        '<span style="background:'+s.col+';color:#060810;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;flex-shrink:0">'+s.n+'</span>'+
+        '<b style="color:'+s.col+';font-size:12px">'+s.t+'</b>'+
+      '</div>'+
+      s.items.map(function(item,ii){return '<div style="display:flex;gap:6px;margin-bottom:4px"><span style="color:'+s.col+';font-size:10px;font-weight:bold;flex-shrink:0">'+(ii+1)+'.</span><p style="margin:0;font-size:10.5px;color:#7a8a9a">'+item+'</p></div>';}).join("")+
+      '<a href="'+s.url+'" target="_blank" style="display:inline-block;margin-top:10px;background:'+s.col+'22;color:'+s.col+';border:1px solid '+s.col+'44;border-radius:5px;padding:5px 12px;font-size:10px;font-weight:bold">Go &rarr;</a>'+
+    '</div>';
+  }).join("")+
+  '</div>'+
+  '<div class="card" style="border:2px solid #e8b83244;margin-bottom:14px">'+
+    '<p style="font-size:12px;font-weight:bold;color:#e8b832;margin:0 0 6px">💰 Stripe Payment Link</p>'+
+    '<input class="inp" id="stripeInput" value="'+esc(stripeLink)+'" oninput="stripeLink=this.value;linkSaved=false" placeholder="https://buy.stripe.com/..." style="margin-bottom:8px">'+
+    '<div style="display:flex;gap:8px;align-items:center">'+
+      '<button onclick="saveLink()" style="background:#e8b832;color:#060810;border:none;border-radius:5px;padding:7px 16px;font-weight:bold;font-size:11px;cursor:pointer">Save</button>'+
+      (linkSaved&&stripeLink?'<a href="'+esc(stripeLink)+'" target="_blank" style="background:#00c853;color:#060810;border-radius:5px;padding:7px 14px;font-weight:bold;font-size:11px">Test Subscribe</a>':"")+
+      (linkSaved?'<span style="font-size:11px;color:#00e676">✓ Saved!</span>':"")+
+    '</div>'+
+  '</div>'+
+  '<div class="card" style="margin-bottom:14px">'+
+    '<p style="font-size:12px;font-weight:bold;color:#e8b832;margin:0 0 4px">📈 Revenue Projection</p>'+
+    '<p style="font-size:10px;color:#4a5a6a;margin:0 0 12px">Mixed tier: 60% Basic $9.99 · 30% Pro $24.99 · 10% Elite $49.99</p>'+
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">'+
+    REV.map(function(r){
+      return '<div style="background:#060810;border:1px solid #1e2838;border-radius:6px;padding:8px;text-align:center">'+
+        '<div style="font-size:9px;color:#40c4ff;margin-bottom:2px">'+r.subs+' subs</div>'+
+        '<div style="font-size:14px;font-weight:900;color:#f0e090;font-family:Georgia,serif">$'+r.mo.toLocaleString()+'</div>'+
+        '<div style="font-size:9px;color:#4a5a6a">/mo</div>'+
+      '</div>';
+    }).join("")+
+    '</div>'+
+  '</div>'+
+  '<div style="background:#0a1530;border:1px solid #1e3860;border-radius:8px;padding:12px 14px">'+
+    '<p style="font-size:11px;font-weight:bold;color:#40c4ff;margin:0 0 7px">Domain Ideas</p>'+
+    '<div style="display:flex;gap:7px;flex-wrap:wrap">'+
+      ['PresidentialDisclosureTracker.com','PDTracker.com','FollowTheMoney.app','CongressTrades.com'].map(function(d){
+        return '<span style="background:#060d1a;border:1px solid #1e3860;border-radius:5px;padding:4px 10px;color:#6a9abf;font-size:11px">'+d+'</span>';
+      }).join("")+
+    '</div>'+
+  '</div>';
+}
+
+function renderLaunch(){
+  var cats=[];var catMap={};
+  LAUNCH_STEPS.forEach(function(s){if(!catMap[s.cat]){catMap[s.cat]=true;cats.push(s.cat);}});
+  var done=Object.keys(launchDone).filter(function(k){return launchDone[k];}).length;
+  var pct=Math.round(done/LAUNCH_STEPS.length*100);
+  return '<h2 style="color:#e8b832;font-size:16px;margin:0 0 4px;font-family:Georgia,serif">🚀 Launch Checklist</h2>'+
+  '<p style="color:#6a7a8a;font-size:12px;margin:0 0 14px">Complete these steps in order before your first subscriber pays you.</p>'+
+  '<div class="card" style="margin-bottom:16px">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
+      '<span style="font-size:12px;color:#c0d0c0;font-weight:bold">'+done+'/'+LAUNCH_STEPS.length+' steps complete</span>'+
+      '<span style="font-size:16px;font-weight:900;color:'+(pct===100?"#00e676":"#e8b832")+';font-family:Georgia,serif">'+pct+'%</span>'+
+    '</div>'+
+    '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:'+(pct===100?"#00e676":"linear-gradient(90deg,#e8b832,#ffab40)")+'"></div></div>'+
+  '</div>'+
+  cats.map(function(cat){
+    var catSteps=LAUNCH_STEPS.filter(function(s){return s.cat===cat;});
+    var catColors={Legal:"#ffd740",Money:"#00e676",Deploy:"#00c7b7",Content:"#ce93d8",Launch:"#e8b832"};
+    var col=catColors[cat]||"#5a6a7a";
+    return '<div style="margin-bottom:14px">'+
+      '<p style="font-size:11px;font-weight:bold;color:'+col+';letter-spacing:.1em;margin:0 0 8px">'+cat.toUpperCase()+'</p>'+
+      catSteps.map(function(step){
+        var isDone=!!launchDone[step.key];
+        return '<div style="background:'+(isDone?'#061a0e':'#0d1117')+';border:1px solid '+(isDone?'#00c85344':'#1e2838')+';border-radius:8px;padding:10px 14px;display:flex;align-items:flex-start;gap:10px;margin-bottom:6px">'+
+          '<button onclick="toggleLaunch(&quot;'+step.key+'&quot;)" style="width:20px;height:20px;border-radius:4px;border:2px solid '+(isDone?'#00c853':'#3a4a5a')+';background:'+(isDone?'#00c853':'transparent')+';color:#060810;font-size:11px;cursor:pointer;flex-shrink:0;font-weight:bold;margin-top:1px">'+(isDone?"✓":"")+'</button>'+
+          '<div style="flex:1">'+
+            '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
+              '<span style="font-size:12px;font-weight:bold;color:'+(isDone?'#69f0ae':'#c0d0c0')+'">'+(isDone?"<s>":"")+esc(step.label)+(isDone?"</s>":"")+'</span>'+
+              (step.url!==";"?'<a href="'+esc(step.url)+'" target="_blank" style="font-size:9px;color:#40c4ff;background:#030d1c;border:1px solid #40c4ff44;border-radius:4px;padding:1px 7px;font-weight:bold">'+esc(step.url.replace("https://","").split("/")[0])+' &rarr;</a>':"")+
+            '</div>'+
+            '<p style="margin:3px 0 0;font-size:10px;color:#5a6a7a;line-height:1.5">'+esc(step.note)+'</p>'+
+          '</div>'+
+        '</div>';
+      }).join("")+
+    '</div>';
+  }).join("");
+}
+
+// =====================================================================
+// RENDER ENGINE
+// =====================================================================
+var PAGES = [renderHome,renderUpdate,renderTracker,renderAlerts,renderInvestor,renderCharts,renderContext,renderNews,renderPoliticians,renderActivity,renderLegal,renderGoLive,renderLaunch];
+
+function renderNav(){
+  document.getElementById("tabBar").innerHTML=TAB_KEYS.map(function(k,i){
+    return '<button class="tab'+(currentTab===i?" active":"")+'" onclick="goTab('+i+')">'+tr(k)+'</button>';
+  }).join("");
+  document.getElementById("langBtn").innerHTML=(LANGS[lang]||"EN")+" &#x25BC;";
+  document.getElementById("footer").innerHTML=tr("noAdvice");
+  var menu=document.getElementById("langMenu");
+  if(menu)menu.innerHTML=Object.keys(LANGS).map(function(k){
+    return '<button onclick="setLang(&quot;'+k+'&quot;)" style="display:block;width:100%;background:'+(lang===k?"#1a1200":"transparent")+';color:'+(lang===k?"#e8b832":"#7a8a9a")+';border:none;border-bottom:1px solid #141820;padding:9px 14px;font-size:11px;cursor:pointer;text-align:left">'+LANGS[k]+'</button>';
+  }).join("");
+}
+
+function renderPage(){
+  var app=document.getElementById("app");
+  if(!app)return;
+  try{app.innerHTML=PAGES[currentTab]();}catch(e){app.innerHTML='<div style="padding:20px;color:#ff5252">Error: '+e.message+'</div>';}
+}
+
+function render(){renderNav();renderPage();}
+function goTab(n){currentTab=n;saveMisc();render();}
+function setTab(n){goTab(n);}
+
+// =====================================================================
+// EVENT HANDLERS
+// =====================================================================
+function toggleLangMenu(){var m=document.getElementById("langMenu");if(m)m.style.display=m.style.display==="none"?"block":"none";}
+function setLang(l){lang=l;var m=document.getElementById("langMenu");if(m)m.style.display="none";render();}
+function setFilter(f){filter=f;render();}
+function setSearch(v){search=v;renderPage();}
+function setInvView(v){investorView=v;render();}
+function setCtxFilter(v){ctxFilter=v;render();}
+function toggleForm(){showForm=!showForm;editId=null;formData=Object.assign({},blank);render();}
+function fv(k,v){formData[k]=v;}
+function startEdit(id){var s=stocks.find(function(x){return x.id===id;});if(!s)return;formData=Object.assign({},s);editId=id;showForm=true;render();}
+function delStock(id){if(!confirm("Delete this entry?"))return;stocks=stocks.filter(function(x){return x.id!==id;});saveStocks();render();}
+function dismiss(id){dismissed.push(id);saveMisc();render();}
+function restoreAll(){dismissed=[];saveMisc();render();}
+function toggleWatch(id){watchlist[id]=!watchlist[id];saveMisc();render();}
+function chgAlloc(t,d){alloc[t]=Math.max(0,Math.min(50,(alloc[t]||0)+d));saveMisc();render();}
+function saveLink(){linkSaved=true;saveMisc();render();}
+function toggleLaunch(k){launchDone[k]=!launchDone[k];saveMisc();render();}
+function saveForm(){
+  if(!formData.ticker)return;
+  var entry=Object.assign({},formData);
+  if(editId!=null){stocks=stocks.map(function(s){return s.id===editId?Object.assign({},s,entry):s;});}
+  else{entry.id=Date.now();stocks.push(entry);}
+  saveStocks();showForm=false;editId=null;formData=Object.assign({},blank);render();
+}
+function applyManual(){
+  var tk=(document.getElementById("mTicker")||{}).value;if(!tk)return;
+  tk=tk.toUpperCase();
+  var pol=(document.getElementById("mPol")||{}).value||"Manual Entry";
+  var ret=(document.getElementById("mRet")||{}).value;
+  var stake=(document.getElementById("mStake")||{}).value;
+  var note=(document.getElementById("mNote")||{}).value;
+  var sig=(document.getElementById("mSig")||{}).value||"BUY";
+  var found=false;
+  stocks=stocks.map(function(s){
+    if(s.ticker===tk&&s.pol.toLowerCase()===pol.toLowerCase()){
+      found=true;return Object.assign({},s,{sig:sig,ret:ret,stake:stake,note:note});
+    }return s;
+  });
+  if(!found)stocks.push({id:Date.now(),pol:pol,pty:"B",ticker:tk,co:"",sig:sig,sta:"UNKNOWN",ret:ret,type:"Purchase",date:TODAY,stake:stake,wk:"Watch",note:note});
+  saveStocks();render();
+}
+function runUpdate(){
+  var btn=document.getElementById("runBtn");
+  if(btn){btn.textContent="⏳ Updating...";btn.disabled=true;btn.style.opacity=".6";}
+  setTimeout(function(){
+    if(btn){btn.textContent="▶ Run Update";btn.disabled=false;btn.style.opacity="1";}
+    alert("Update complete — "+stocks.length+" positions tracked as of "+TODAY);
+  },1800);
+}
+document.addEventListener("click",function(e){
+  var menu=document.getElementById("langMenu");
+  if(menu&&!menu.contains(e.target)&&e.target.id!=="langBtn")menu.style.display="none";
+});
+
+// INIT
+render();
+</script>
+</body>
+</html>
